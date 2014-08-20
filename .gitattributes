@@ -1,0 +1,29 @@
+* text eol=lf
+
+# Explicit Text
+*.txt text
+*.md text
+
+*.lua text
+*.json text
+*.htm text
+*.html text
+*.xml text
+
+*.c text
+*.cpp text
+*.h text
+
+# Explicit Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.psd binary
+*.pdf binary
+
+*.wav binary
+*.mp3 binary
+*.mp4 binary
+*.m4a binary
+*.ogg binary
+
