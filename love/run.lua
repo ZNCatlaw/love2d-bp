@@ -24,7 +24,14 @@ function love.run()
         updateRate = 0
         while(t >= nextTime and updateRate < maxFrameskip ) do
             -- events.lua : love.processevents()
-            if love.processevents and not love.processevents() then return end
+            if love.processevents and not love.processevents() then
+                -- Quit signal received!
+                love.audio.stop()
+                love.soundman:killThread()
+                love.inputman:killThread()
+                love.timer.sleep(0.05)
+                return
+            end
 
             -- update.lua : love.update(dt)
             if love.update then love.update(internalRate) end
@@ -58,6 +65,10 @@ function love.run()
             love.graphics.present()
             frameCount = frameCount + 1
         end
+
+        -- Print the thread debug queues maybe
+        if love.debug.getFlag('sound') then love.soundman:printDebugQueue() end
+        if love.debug.getFlag('input') then love.inputman:printDebugQueue() end
 
         love.timer.sleep(0.001)
     end

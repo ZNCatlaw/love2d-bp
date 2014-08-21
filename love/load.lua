@@ -1,5 +1,4 @@
 function love.load()
-    view = Viewport()
-    input = Inputman.new()
-    sound = Soundman.new()
+    require('game/controls')  
+    require('game/sounds')  
 end

@@ -1,6 +1,10 @@
+local Viewport = require('libs/viewport')
+love.viewport = Viewport()
+
 function love.draw()
-    view:pushScale()
+    love.viewport:pushScale()
 
+    -- Draw here
 
-    view:popScale()
+    love.viewport:popScale()
 end

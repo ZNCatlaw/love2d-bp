@@ -10,24 +10,30 @@
 
 
 --
---  Load libraries and such here.
+--  Load global libraries and such here.
 --
 Class      = require('vendor/class')
-Inspect    = require('vendor/inspect')
 JSON       = require('vendor/dkjson')
 Set        = require('vendor/set')
+inspect    = require('vendor/inspect')
 math.round = require('vendor/round')
+require('vendor/deepcopy') -- table.copy and table.deepcopy
 
-Viewport = require('libs/viewport')
-Inputman = require('libs/inputman')
-Soundman = require('libs/soundman')
+-- This table can store important "global" objects for the game
+-- (and keep the global namespace cleaner)
+game = {}
+
+-- debug.lua -- Debug flags/output for Love2d
+--   Exports:
+--     love.debug, etc. (see file)
+require('love/debug')
+
+-- Set some debug flags here ('all' is special)
+love.debug.setFlag('all')
 
 -- load.lua -- Loaded on game start
 --   Exports:
 --     love.load()
---       view (Viewport instance)
---       input (Inputman instance)
---       sound (Soundman instance)
 require('love/load')
 
 -- update.lua -- Update method
@@ -37,14 +43,23 @@ require('love/update')
 
 -- draw.lua -- Draw method
 --   Exports:
+--     love.viewport (Viewport instance)
 --     love.draw()
 require('love/draw')
 
 -- input.lua -- Input callbacks
 --   Exports:
+--     love.inputman (Inputman instance)
 --     love.inputpressed(state, value)
 --     love.inputreleased(state, value)
+--     love.joystickadded(k)
+--     love.joystickremoved(j)
 require('love/input')
+
+-- sound.lua -- Sound methods
+--   Exports:
+--     love.soundman (Soundman instance)
+require('love/sound')
 
 -- events.lua -- Love2d Event processing
 --   Exports:
