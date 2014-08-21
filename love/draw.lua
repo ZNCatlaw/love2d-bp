@@ -1,5 +1,5 @@
 local Viewport = require('libs/viewport')
-love.viewport = Viewport()
+love.viewport = Viewport.new()
 
 function love.draw()
     love.viewport:pushScale()

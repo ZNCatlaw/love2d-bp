@@ -5,20 +5,24 @@ local roundDownToNearest = function(val, multiple)
     return multiple * (math.floor(val/multiple))
 end
 
---
--- Instantiate a viewport with Viewport(options)
---
-Viewport = setmetatable(Viewport, {__call = function(_, opts)
-    local self = setmetatable({}, metatable)
-
-    opts = setmetatable(opts or {},{__index={
+local default_options = {
+    __index={
         width  = 720,
         height = 405,
         scale  = 0,
         multiple = 1,
         filter = {'nearest', 'nearest', 0},
         fs     = false
-    }})
+    }
+}
+
+--
+-- Instantiate a viewport with Viewport(options)
+--
+function Viewport.new(opts)
+    local self = setmetatable({}, metatable)
+
+    opts = setmetatable(opts or {}, default_options)
 
     self:setWidth(opts.width)
     self:setHeight(opts.height)
@@ -29,7 +33,7 @@ Viewport = setmetatable(Viewport, {__call = function(_, opts)
     self:setupScreen()
 
     return self
-end})
+end
 
 function Viewport:setupScreen()
     self:setScale(self.scale)

@@ -3,7 +3,7 @@ local metatable = {__index = SoundMan}
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
 
-SoundMan = setmetatable(SoundMan, {__call = function()
+function SoundMan.new()
     local self = setmetatable({}, metatable)
 
     self.shortcuts = {}
@@ -13,7 +13,7 @@ SoundMan = setmetatable(SoundMan, {__call = function()
     self.thread:start()
 
     return self
-end})
+end
 
 function SoundMan:killThread()
     if self.thread:isRunning() then

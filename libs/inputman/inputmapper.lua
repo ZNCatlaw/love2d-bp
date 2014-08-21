@@ -8,14 +8,14 @@ local joysticks = love.joystick.getJoysticks()
 
 -- Public class
 
-InputMapper = setmetatable(InputMapper,{__call = function(_, map, deadzone)
+function InputMapper.new(map, deadzone)
     local self = setmetatable({}, metatable)
 
     self.deadzone = math.max(deadzone or default_deadzone, 0.05)
     self:setStateMap(map)
 
     return self
-end})
+end
 
 function InputMapper:setStateMap(map)
     if(type(map) == 'table') then

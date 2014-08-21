@@ -14,7 +14,7 @@ end
 
 -- InputMan object
 
-InputMan = setmetatable(InputMan, {__call = function(_, mapping)
+function InputMan.new(mapping)
     local self = setmetatable({}, metatable)
 
     self.thread = love.thread.newThread(path..'/thread.lua')
@@ -28,7 +28,7 @@ InputMan = setmetatable(InputMan, {__call = function(_, mapping)
     if mapping then self:setStateMap(mapping) end
 
     return self
-end})
+end
 
 function InputMan:sendCommand(msg)
     if (msg == nil) then return end

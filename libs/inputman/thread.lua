@@ -6,12 +6,12 @@ local JSON = require('vendor/dkjson')
 local Set = require('vendor/set')
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
-local inputmapper = require(path..'inputmapper')()
+local inputmapper = require(path..'inputmapper').new()
 
 local insert = table.insert
 local remove = table.remove
 
-local active_states = Set()
+local active_states = Set.new()
 local pressCount = 0
 local releaseCount = 0
 
@@ -65,7 +65,7 @@ callbacks['kill'] = function()
 end
 
 local updateStates = function()
-    local new_states = Set(inputmapper:getStates())
+    local new_states = Set.new(inputmapper:getStates())
     local pressed = new_states - active_states
     local released = active_states - new_states
     active_states = new_states

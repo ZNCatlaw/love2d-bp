@@ -1,5 +1,5 @@
 local Class = {
-    _VERSION     = '0.3.5',
+    _VERSION     = '0.4.6',
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -12,12 +12,12 @@ local Class = {
         The class constructor returns `Class, Metatable`.
 
         Then, define a function `MyClass:initialize(params)`. When you call
-        `MyClass(params)` an instance is created and `.initialize(self, params)`
-        is called with the new instance. You need not return anything from
-        .initialize(), as the constructor will return the object once the
-        function is finished.
+        `MyClass.new(params)` an instance is created and
+        `.initialize(self, params)` is called with the new instance. You need
+        not return anything from .initialize(), as the constructor will return
+        the object once the function is finished.
 
-        For private class and instance variables, you can call
+        For private(ish) class and instance variables, you can call
         Class:private() or self:private() to retrieve a table reference.
         Passing a table into the private() method will set the private store to
         that table.
@@ -36,7 +36,7 @@ local Class = {
                 return self.kind
             end
 
-            local mrEd = Animal("horse") -> Instance of Animal
+            local mrEd = Animal.new("horse") -> Instance of Animal
             mrEd:getKind() -> "horse"
 
     ]],
@@ -106,36 +106,31 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
     end
 
     -- Setup class metatable for Class(params) constructor
-    setmetatable(base_class, {
-        __name = class_name,
-        __call = function(_, ...)
-            -- Instantiate new class and make id from pointer
-            local new_instance = {}
-            local id = tostring(new_instance):match('0x[0-9a-f]+$')
-            function new_instance.getID() return id end
+    function base_class.new(...)
+        -- Instantiate new class and make id from pointer
+        local new_instance = {}
+        local id = tostring(new_instance):match('0x[0-9a-f]+$')
+        function new_instance.getID() return id end
 
-            -- Now that we have the id, we can attach the metatable
-            -- (in case __tostring got overwritten)
-            setmetatable(new_instance, metatable)
+        -- Now that we have the id, we can attach the metatable
+        -- (in case __tostring got overwritten)
+        setmetatable(new_instance, metatable)
 
-            -- Create an empty private store for the instance
-            private[new_instance] = {}
+        -- Create an empty private store for the instance
+        private[new_instance] = {}
 
-            -- Run user-defined constructor
-            base_class.initialize(new_instance, ...)
+        -- Run user-defined constructor
+        base_class.initialize(new_instance, ...)
 
-            -- Override .initialize on instance to prevent re-initializing
-            function new_instance.initialize() return end
+        -- Override .initialize on instance to prevent re-initializing
+        function new_instance.initialize() return end
 
-            return new_instance
-        end
-    })
+        return new_instance
+    end
 
     return base_class, metatable
 end
 })
-
-
 
 ---------------
 -- Unit Tests
@@ -154,7 +149,7 @@ do
         return self.kind
     end
 
-    local mrEd = Animal('horse')
+    local mrEd = Animal.new('horse')
     assert(mrEd:getKind() == 'horse')
 
     assert(Animal.class() == Animal)
@@ -165,7 +160,7 @@ do
     assert(Animal.isAnimal(mrEd))
     assert(mrEd:className() == "Animal")
 
-    local gunther = Animal('penguin')
+    local gunther = Animal.new('penguin')
     assert(gunther:initialize() == nil)
     assert(gunther:getKind() == 'penguin')
 
@@ -179,7 +174,7 @@ do
         return self.edible
     end
 
-    local stella = Plant(false)
+    local stella = Plant.new(false)
     assert(not stella:isEdible())
     assert(stella:className() == "Plant")
     assert(Plant.isPlant(stella))

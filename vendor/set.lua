@@ -1,10 +1,10 @@
 local Set = {
-    _VERSION     = 'set.lua 0.7',
+    _VERSION     = 'set.lua 0.8',
     _DESCRIPTION = 'Simple Set operations for Lua',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
         To create a set:
-            Set(items...)
+            Set.new(items...)
 
         To modify a set:
             Set:add(items...) or Set:remove(items...)
@@ -32,7 +32,7 @@ local Set = {
 
         SOME EXAMPLES:
 
-        > set = Set("first", "second", "third") -> S{"first", "second", "third"}
+        > set = Set.new("first", "second", "third") -> S{"first", "second", "third"}
         > set:contains("first") -> TRUE
         > set:contains("first", "second") -> TRUE
         > set:contains("first", "second", "fourth") -> FALSE
@@ -207,7 +207,7 @@ end
 --    to the contents of the first set.
 --
 function Set:union(second)
-    local result = Set(self:items())
+    local result = Set.new(self:items())
     if Set.isInstance(second) then
         result:add(second:items())
     else
@@ -223,7 +223,7 @@ end
 --    from the data of the first set.
 --
 function Set:complement(second)
-    local result = Set(self:items())
+    local result = Set.new(self:items())
     if Set.isInstance(second) then
         result:remove(second:items())
     else
@@ -238,7 +238,7 @@ end
 --    If the parameter is not a set, will return an empty set.
 --
 function Set:intersect(second)
-    local result = Set()
+    local result = Set.new()
     if Set.isInstance(second) then
         local items = self:items()
         for _,v in ipairs(items) do
@@ -332,7 +332,7 @@ metatable.__pairs = metatable.__ipairs
 ---------------
 do
     -- create the empty set
-    local set = Set()
+    local set = Set.new()
     assert(set:size() == 0)
 
     -- check type
@@ -344,11 +344,11 @@ do
     assert(set:size() == 0)
 
     -- create a set with arguments
-    set = Set("first", "second", "third", "third")
+    set = Set.new("first", "second", "third", "third")
     assert(set:size() == 3)
 
     -- create a set from a table
-    local tset = Set({"first", "second", "third", "third"})
+    local tset = Set.new({"first", "second", "third", "third"})
     assert(tset:size() == 3)
 
     -- contains
@@ -391,7 +391,7 @@ do
     assert(set ~= new_set)
 
     -- intersection
-    local bob = Set("fourth", "whatever", "grand") * set
+    local bob = Set.new("fourth", "whatever", "grand") * set
     assert(bob:size() == 1)
 
     -- relative complement

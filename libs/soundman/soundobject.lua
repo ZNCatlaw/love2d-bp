@@ -27,7 +27,7 @@ function SoundObject.getResource(source, srcType)
     return resource
 end
 
-SoundObject = setmetatable(SoundObject, {__call = function(_, source, tags, volume, srcType, callbacks)
+function SoundObject.new(source, tags, volume, srcType, callbacks)
     local self = setmetatable({}, metatable)
 
     local resource = SoundObject.getResource(source, srcType)
@@ -46,7 +46,7 @@ SoundObject = setmetatable(SoundObject, {__call = function(_, source, tags, volu
     insert(SoundObjects, self)
 
     return self
-end})
+end
 
 function SoundObject:hasTag(tags)
     if(type(tags) == "string") then tags = {tags} end

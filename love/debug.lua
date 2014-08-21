@@ -1,7 +1,7 @@
 -- Debug functions for love.
 love.debug = {}
 
-local debug_flags = Set()
+local debug_flags = Set.new()
 
 function love.debug.flags()
     return debug_flags:items()
