@@ -1,4 +1,4 @@
-# LOVE2D Boilerplate License
+# LÖVE2D Boilerplate License
 
 Copyright 2014 Tim Bellefleur (except where otherwise specified)
 

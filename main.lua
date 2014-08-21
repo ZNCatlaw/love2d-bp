@@ -28,35 +28,35 @@ Soundman = require('libs/soundman')
 --       view (Viewport instance)
 --       input (Inputman instance)
 --       sound (Soundman instance)
-require('load')
+require('love/load')
 
 -- update.lua -- Update method
 --   Exports:
 --     love.update(dt)
-require('update')
+require('love/update')
 
 -- draw.lua -- Draw method
 --   Exports:
 --     love.draw()
-require('draw')
+require('love/draw')
 
 -- input.lua -- Input callbacks
 --   Exports:
 --     love.inputpressed(state, value)
 --     love.inputreleased(state, value)
-require('input')
+require('love/input')
 
 -- events.lua -- Love2d Event processing
 --   Exports:
 --     love.processevents()
-require('events')
+require('love/events')
 
 -- misc.lua -- Miscellaneous Love2d events
 --   Exports:
 --     love.threaderror(thread, errorstr)
-require('misc')
+require('love/misc')
 
 -- run.lua -- Main loop
 --   Exports:
 --     love.run()
-require('run')
+require('love/run')
