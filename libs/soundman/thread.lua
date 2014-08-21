@@ -5,15 +5,17 @@ require('love.sound')
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
 
-local SoundObject = require(path..'soundobject')
-SoundObjects = SoundObjects or {}
-SoundResources = SoundResources or {}
+local insert = table.insert
+local remove = table.remove
+local gmatch = string.gmatch
+
+local SoundObject, SoundObjects, SoundResources = unpack(require(path..'soundobject'))
 
 -- All the important numbers/counters
 
 local _stop = false
 local _epsilon = 0.0001
-local _throttle = 72000 -- 50% above 44800khz
+local _throttle = 72000 -- 50% above 44100khz
 local _time = love.timer.getTime()
 local _threadStart = _time
 local _dt = 0
@@ -31,8 +33,8 @@ local parseTagString = function(tags)
     if not tags then return end
     tagTable = {}
     if tags then
-        for token in string.gmatch(tags,"([^%,%;%s]+)") do
-            table.insert(tagTable, token)
+        for token in gmatch(tags,"([^%,%;%s]+)") do
+            insert(tagTable, token)
         end
     end
     return tagTable
@@ -40,30 +42,34 @@ end
 
 -- Callbacks
 
-callbacks['touchResource'] = function(...)
-    local args = {...}
-    srcType = 'stream'
-    for _, e in ipairs(args) do
-        if(e == 'static') then srcType = 'static' end
-    end
-    SoundObject.getResource(args[1], srcType)
+callbacks['status'] = function()
+    return dChannel:push({
+        "STATUS",
+        loopCount = _loopCount,
+        threadTime =_threadTime,
+        loopRate = _loopRate
+    })
+end
+
+callbacks['touchResource'] = function(src, srcType)
+    SoundObject.getResource(src, srcType)
 end
 
 callbacks['playSound'] = function(...)
-    local snd = SoundObject.new(...)
+    local snd = SoundObject(...)
     snd:play()
 end
 
 callbacks['playSoundLoop'] = function(...)
-    local snd = SoundObject.new(...)
+    local snd = SoundObject(...)
     snd.source:setLooping(true)
     snd:play()
 end
 
 callbacks['playSoundRegionLoop'] = function(...)
     local args = {...}
-    local regionEnd = table.remove(args)
-    local regionStart = table.remove(args)
+    local regionEnd = remove(args)
+    local regionStart = remove(args)
     local source, tags, volume, srcType = unpack(args)
 
     local cb = function(self, dt)
@@ -72,13 +78,13 @@ callbacks['playSoundRegionLoop'] = function(...)
         end
     end
 
-    local snd = SoundObject.new(source, tags, volume, srcType, {onTick = cb})
+    local snd = SoundObject(source, tags, volume, srcType, {onTick = cb})
     snd:play()
 end
 
 callbacks['playSoundPartialLoop'] = function(...)
     local args = {...}
-    local regionStart = table.remove(args)
+    local regionStart = remove(args)
     local source, tags, volume, srcType = unpack(args)
 
     local cb = function(self, dt)
@@ -87,7 +93,7 @@ callbacks['playSoundPartialLoop'] = function(...)
         return true
     end
 
-    local snd = SoundObject.new(source, tags, volume, srcType, {onStop = cb})
+    local snd = SoundObject(source, tags, volume, srcType, {onStop = cb})
     snd:play()
 end
 
@@ -113,8 +119,8 @@ callbacks['resume'] = function(tags)
 end
 
 callbacks['kill'] = function()
-    callbacks['stop']()
     _stop = true
+    callbacks['stop']()
 end
 
 -- Tick Function
@@ -125,7 +131,7 @@ local soundTick = function(dt)
             if v.callbacks['onStop'] and v.callbacks['onStop'](v, dt) then
                 -- no-op
             else
-                table.remove(SoundObjects, k)
+                remove(SoundObjects, k)
             end
         elseif v.callbacks['onTick'] then
             v.callbacks['onTick'](v, dt)
@@ -134,6 +140,7 @@ local soundTick = function(dt)
 end
 
 -- Main Thread Loop
+dChannel:push('Sound thread started.')
 
 while not _stop do
     _time = love.timer.getTime()
@@ -147,26 +154,19 @@ while not _stop do
 
     local msg = cChannel:pop()
     if (type(msg) == 'table') then
-        local callback = table.remove(msg, 1)
+        local callback = remove(msg, 1)
         dChannel:push({"COMMAND", callback, unpack(msg)})
 
         if(callbacks[callback]) then
-            local result = callbacks[callback](unpack(msg))
+            callbacks[callback](unpack(msg))
         else
             dChannel:push({"ERROR", callback, "doesn't exist"})
         end
     end
 
-    -- Debug / EndLoop
-    _debugAcc = _debugAcc + _dt
-    if(_debugAcc > 10) then
-        dChannel:push({"STATUS",
-            loopCount = _loopCount,
-            threadTime =_threadTime,
-            loopRate = _loopRate})
-        _debugAcc = 0
-    end
-
     --Throttle
     if (_loopRate > _throttle) then love.timer.sleep(0.001) end
 end
+
+dChannel:push('Sound thread terminated.')
+cChannel:push('Sound thread terminated.')

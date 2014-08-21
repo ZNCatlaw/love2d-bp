@@ -1,35 +1,34 @@
 local SoundObject = {}
-SoundObject.__index = SoundObject
+local metatable = {__index = SoundObject}
 
-SoundObjects = SoundObjects or {}
-SoundResources = SoundResources or {}
+local SoundObjects = {}
+local SoundResources = {}
+
+local concat = table.concat
+local insert = table.insert
+local remove = table.remove
+local match = string.match
+local gmatch = string.gmatch
 
 function SoundObject.getResource(source, srcType)
-    srcType = srcType or 'stream'
-    local key = table.concat({source, '_', srcType})
+    if(srcType ~= 'static') then srcType = 'stream' end
+    local key = source..'-'..srcType
     if SoundResources[key] then return SoundResources[key] end
 
-    local ext = string.match(source, "%.([^.]+)$")
-    if (ext) then
-        if(ext ~= 'wav') then
-            SoundResources[key] = love.sound.newDecoder(source)
-            if(srcType == 'static') then
-                SoundResources[key] = love.sound.newSoundData(SoundResources[key])
-            end
-        else
-            if(srcType == 'stream') then
-                SoundResources[key] = love.sound.newDecoder(source)
-            elseif(srcType == 'static') then
-                SoundResources[key] = love.sound.newSoundData(source)
-            end
-        end
-        return SoundResources[key]
+    local resource
+    if(srcType == 'stream') then
+        resource = love.sound.newDecoder(source)
+    elseif(srcType == 'static') then
+        resource = love.sound.newSoundData(source)
     end
+
+    SoundResources[key] = resource
+
+    return resource
 end
 
-function SoundObject.new(source, tags, volume, srcType, callbacks)
-    local self = {}
-    setmetatable(self, SoundObject)
+SoundObject = setmetatable(SoundObject, {__call = function(_, source, tags, volume, srcType, callbacks)
+    local self = setmetatable({}, metatable)
 
     local resource = SoundObject.getResource(source, srcType)
     self.source = love.audio.newSource(resource, srcType)
@@ -37,22 +36,22 @@ function SoundObject.new(source, tags, volume, srcType, callbacks)
 
     self.tags = {}
     if tags then
-        for token in string.gmatch(tags,"([^%,%;%s]+)") do
-            table.insert(self.tags, token)
+        for token in gmatch(tags,"([^%,%;%s]+)") do
+            insert(self.tags, token)
         end
     end
 
     self.callbacks = callbacks or {}
 
-    table.insert(SoundObjects, self)
+    insert(SoundObjects, self)
 
     return self
-end
+end})
 
 function SoundObject:hasTag(tags)
     if(type(tags) == "string") then tags = {tags} end
     local toFind = #tags
-    for k, v in ipairs(self.tags) do
+    for _, v in ipairs(self.tags) do
         if table.find(tags, v) then toFind = toFind - 1 end
         if (toFind == 0) then return true end
     end
@@ -105,4 +104,4 @@ end
 
 --
 
-return SoundObject
+return {SoundObject, SoundObjects, SoundResources}

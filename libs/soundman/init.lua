@@ -1,13 +1,10 @@
 local SoundMan = {}
-SoundMan.__index = SoundMan
-
-local stringspect = require('vendor/inspect')
+local metatable = {__index = SoundMan}
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
 
-function SoundMan.new()
-    local self = {}
-    setmetatable(self, SoundMan)
+SoundMan = setmetatable(SoundMan, {__call = function()
+    local self = setmetatable({}, metatable)
 
     self.shortcuts = {}
     self.thread = love.thread.newThread(path..'thread.lua')
@@ -16,27 +13,32 @@ function SoundMan.new()
     self.thread:start()
 
     return self
+end})
+
+function SoundMan:killThread()
+    if self.thread:isRunning() then
+        self.cChannel:supply({'kill'})
+        self.cChannel:demand()
+    end
+    return not self.thread:isRunning()
 end
 
 function SoundMan:reInitialize()
-    if self.thread and self.thread:isRunning() then
-        self.tChannel:supply({'kill'})
+    if not self.thread:isRunning() then
+      self.thread:start()
     end
-    self.thread = love.thread.newThread(path..'thread.lua')
-    self.thread:start()
+    return self.thread:isRunning()
 end
 
 function SoundMan:sendCommand(msg)
     if (msg == nil) then return end
-    self.cChannel:push(msg)
+    if self.thread:isRunning() then self.cChannel:push(msg) end
 end
 
 function SoundMan:printDebugQueue()
     while self.dChannel:getCount() > 0 do
         local msg = self.dChannel:pop()
-        if(type(msg) == 'string') then print(msg) else
-            print("SOUND-D", stringspect(msg))
-        end
+        love.debug.print("[SoundMan-D]", msg)
     end
 end
 
@@ -111,9 +113,16 @@ end
 --
 --
 function SoundMan:run(name, tags)
-    local msg = deepcopy(self.shortcuts[name])
+    local msg = table.deepcopy(self.shortcuts[name])
     if msg and tags then msg[3] = table.concat({tags, ';', msg[3]}) end
     self:sendCommand(msg)
+end
+
+--
+--
+--
+function SoundMan:threadStatus()
+    return self:sendCommand({'status'})
 end
 
 --
