@@ -1,5 +1,5 @@
-local SoundObject = {}
-local metatable = {__index = SoundObject}
+local Class = require('vendor/class')
+local SoundObject = Class('SoundObject')
 
 local SoundObjects = {}
 local SoundResources = {}
@@ -27,9 +27,7 @@ function SoundObject.getResource(source, srcType)
     return resource
 end
 
-function SoundObject.new(source, tags, volume, srcType, callbacks)
-    local self = setmetatable({}, metatable)
-
+function SoundObject:initialize(source, tags, volume, srcType, callbacks)
     local resource = SoundObject.getResource(source, srcType)
     self.source = love.audio.newSource(resource, srcType)
     self.source:setVolume(volume or 1)
@@ -44,8 +42,6 @@ function SoundObject.new(source, tags, volume, srcType, callbacks)
     self.callbacks = callbacks or {}
 
     insert(SoundObjects, self)
-
-    return self
 end
 
 function SoundObject:hasTag(tags)

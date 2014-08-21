@@ -1,5 +1,4 @@
-local InputMan = {}
-local metatable = {__index = InputMan}
+local InputMan = Class('InputMan')
 
 local path = debug.getinfo(1).short_src:match("(.-)[^\\/]-%.?[^%.\\/]*$")
 
@@ -14,9 +13,7 @@ end
 
 -- InputMan object
 
-function InputMan.new(mapping)
-    local self = setmetatable({}, metatable)
-
+function InputMan:initialize(mapping)
     self.thread = love.thread.newThread(path..'/thread.lua')
     self.eChannel = love.thread.getChannel('input_events')
     self.cChannel = love.thread.getChannel('input_commands')
@@ -26,8 +23,6 @@ function InputMan.new(mapping)
     self.thread:start()
 
     if mapping then self:setStateMap(mapping) end
-
-    return self
 end
 
 function InputMan:sendCommand(msg)

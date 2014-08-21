@@ -1,18 +1,13 @@
-local SoundMan = {}
-local metatable = {__index = SoundMan}
+local SoundMan = Class('SoundMan')
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
 
-function SoundMan.new()
-    local self = setmetatable({}, metatable)
-
+function SoundMan:initialize()
     self.shortcuts = {}
     self.thread = love.thread.newThread(path..'thread.lua')
     self.cChannel = love.thread.getChannel('sound_commands')
     self.dChannel = love.thread.getChannel('sound_debug')
     self.thread:start()
-
-    return self
 end
 
 function SoundMan:killThread()

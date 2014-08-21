@@ -4,7 +4,7 @@ function love.processevents()
 
     -- Pump inputman events into queue
     if love.inputman then
-        love.inputman:processEventQueue(function(event, states)
+        love.inputman.processEventQueue(function(event, states)
             for i,state in ipairs(states) do
                 love.event.push(event, state)
             end

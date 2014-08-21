@@ -1,7 +1,11 @@
 function love.run()
-    love.math.setRandomSeed(os.time())
+    -- Seed all the PRNGs!
+    math.randomseed(os.time())
+    love.math.setRandomSeed(os.time(), os.time())
+    for i=1,10 do math.random(); love.math.random() end
+
     love.event.pump()
-    if love.load then love.load(arg) end
+    love.load(arg)
     love.timer.step()
 
     local t = 0
@@ -13,18 +17,18 @@ function love.run()
     local updateRate = 0
     local maxFrameskip = 4
 
-    -- Main loop
+    -- Main loop (fixed-rate update with unlocked FPS and frameskip)
     while true do
         -- Tick-count/running time
         love.timer.step()
         dt = love.timer.getDelta()
         t = t + dt
 
-        -- Update at constant speed. Game will slow if maxFrameskip exceeded
+        -- Update at constant rate. Game will slow if maxFrameskip exceeded
         updateRate = 0
         while(t >= nextTime and updateRate < maxFrameskip ) do
             -- events.lua : love.processevents()
-            if love.processevents and not love.processevents() then
+            if not love.processevents() then
                 -- Quit signal received!
                 love.audio.stop()
                 love.soundman:killThread()
@@ -34,7 +38,7 @@ function love.run()
             end
 
             -- update.lua : love.update(dt)
-            if love.update then love.update(internalRate) end
+            love.update(internalRate)
             nextTime = nextTime + internalRate
             updateCount = updateCount + 1
             updateRate = updateRate + 1
@@ -46,7 +50,7 @@ function love.run()
             love.graphics.origin()
 
             -- draw.lua : love.draw()
-            if love.draw then love.draw() end
+            love.draw()
 
             -- Print optional debug information
             if(debugInfo and #debugInfo > 0) then

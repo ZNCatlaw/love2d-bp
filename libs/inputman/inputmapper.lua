@@ -1,5 +1,5 @@
-local InputMapper = {}
-local metatable = {__index = InputMapper}
+local Class = require('vendor/class')
+local InputMapper = Class('InputMapper')
 
 -- Private variables/methods
 
@@ -8,13 +8,9 @@ local joysticks = love.joystick.getJoysticks()
 
 -- Public class
 
-function InputMapper.new(map, deadzone)
-    local self = setmetatable({}, metatable)
-
+function InputMapper:initialize(map, deadzone)
     self.deadzone = math.max(deadzone or default_deadzone, 0.05)
     self:setStateMap(map)
-
-    return self
 end
 
 function InputMapper:setStateMap(map)

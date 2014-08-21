@@ -1,5 +1,5 @@
 local Class = {
-    _VERSION     = '0.4.6',
+    _VERSION     = '0.5.0',
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -21,6 +21,10 @@ local Class = {
         Class:private() or self:private() to retrieve a table reference.
         Passing a table into the private() method will set the private store to
         that table.
+
+        You can also instantiate a singleton via .newSingleton(...). This
+        enforces one instance only, and allows instance methods to be called
+        without `self` syntactic sugar (e.g. `.method(params)`).
 
         Each instance's unique object ID can be retrieved via :getID()
 
@@ -78,6 +82,7 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
     -- Define the metatable for instances of the class.
     local metatable = {
         __name = class_name,
+        __type = 'instance',
         __index = base_class
     }
     function base_class.getMetatable() return metatable end
@@ -92,6 +97,10 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
     function base_class.class() return base_class end
     function base_class.className(obj) return metatable.__name end
     function base_class.initialize() end
+
+    -- Weak table to store all of the instances of the class
+    local instances = setmetatable({}, {__mode = 'v'})
+    function base_class.instanceCount() return #instances end
 
     -- Define private store and accessor method
     local private = setmetatable({}, {__mode = "k"})
@@ -116,6 +125,9 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
         -- (in case __tostring got overwritten)
         setmetatable(new_instance, metatable)
 
+        -- Add to the instances list
+        table.insert(instances,new_instance)
+
         -- Create an empty private store for the instance
         private[new_instance] = {}
 
@@ -126,6 +138,31 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
         function new_instance.initialize() return end
 
         return new_instance
+    end
+
+    -- Instantiate singleton
+    function base_class.newSingleton(...)
+        -- Singleton only permitted if it's the only instance
+        if(base_class.instanceCount() > 0) then return end
+        local instance = base_class.new(...)
+        local singleton_mt = {
+            __name = class_name,
+            __type = 'singleton',
+            __index = function(t, k)
+                local value = instance[k]
+                if(type(value) == 'function') then
+                    return function(...) return value(instance, ...) end
+                end
+                return value
+            end,
+            __newindex = instance
+        }
+
+        -- Disable instantiation of class
+        function base_class.new() return end
+
+        -- Return the singleton and
+        return setmetatable({}, singleton_mt)
     end
 
     return base_class, metatable
@@ -166,13 +203,9 @@ do
 
     local Plant = Class('Plant')
 
-    function Plant:initialize(edible)
-        self.edible = edible
-    end
+    function Plant:initialize(edible) self.edible = edible end
 
-    function Plant:isEdible()
-        return self.edible
-    end
+    function Plant:isEdible() return self.edible end
 
     local stella = Plant.new(false)
     assert(not stella:isEdible())
@@ -184,6 +217,14 @@ do
     assert(not Animal.isInstance(stella))
 
     assert(stella:getID():match('0x[0-9a-f]+$'))
+
+    local Sing = Class('Singleton')
+    assert(Sing.new())
+    assert(not Sing.newSingleton())
+
+    local Sing2 = Class('Singleton2')
+    assert(Sing2.newSingleton())
+    assert(not Sing2.new())
 end
 
 --
