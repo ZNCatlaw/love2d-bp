@@ -6,7 +6,7 @@ local JSON = require('vendor/dkjson')
 local Set = require('vendor/set')
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
-local InputMapper = require(path..'inputmapper').new()
+local inputmapper = require(path..'inputmapper')()
 
 local insert = table.insert
 local remove = table.remove
@@ -41,7 +41,8 @@ local callbacks = {}
 -- Callbacks
 
 callbacks['status'] = function()
-    return dChannel:push({"STATUS",
+    return dChannel:push({
+        "STATUS",
         loopCount = _loopCount,
         threadTime =_threadTime,
         loopRate = _loopRate,
@@ -52,15 +53,19 @@ end
 
 callbacks['setStateMap'] = function(mapstring)
     local map = JSON.decode(mapstring)
-    InputMapper:setStateMap(map)
+    inputmapper:setStateMap(map)
 end
 
 callbacks['updateJoysticks'] = function()
-    InputMapper:updateJoysticks()
+    inputmapper:updateJoysticks()
+end
+
+callbacks['kill'] = function()
+    _stop = true
 end
 
 local updateStates = function()
-    local new_states = Set(InputMapper:getStates())
+    local new_states = Set(inputmapper:getStates())
     local pressed = new_states - active_states
     local released = active_states - new_states
     active_states = new_states
@@ -68,17 +73,18 @@ local updateStates = function()
     local numPressed = pressed:size()
     if(numPressed > 0) then
         pressCount = pressCount + numPressed
-        eChannel:push({'pressed', unpack(pressed:items())})
+        eChannel:push({'inputpressed', unpack(pressed:items())})
     end
 
     local numReleased = released:size()
     if(numReleased > 0) then
         releaseCount = releaseCount + numReleased
-        eChannel:push({'released', unpack(released:items())})
+        eChannel:push({'inputreleased', unpack(released:items())})
     end
 end
 
 -- Main Thread Loop
+dChannel:push('Input thread started.')
 
 while not _stop do
     _time = love.timer.getTime()
@@ -92,9 +98,9 @@ while not _stop do
 
     local pollstate = pChannel:pop()
     if (pollstate == 'all') then
-        rChannel:push(InputMapper:getStates())
+        rChannel:push(inputmapper:getStates())
     elseif pollstate then
-        rChannel:push(InputMapper:isState(pollstate))
+        rChannel:push(inputmapper:isState(pollstate))
     end
 
     local msg = cChannel:pop()
@@ -108,13 +114,9 @@ while not _stop do
         end
     end
 
-    -- Debug / EndLoop
-    _debugAcc = _debugAcc + _dt
-    if(_debugAcc > 10) then
-
-        _debugAcc = 0
-    end
-
     --Throttle
     if (_loopRate > _throttle) then love.timer.sleep(0.001) end
 end
+
+dChannel:push('Input thread terminated.')
+cChannel:push('Input thread terminated.')

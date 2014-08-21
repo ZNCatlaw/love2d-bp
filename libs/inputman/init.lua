@@ -1,15 +1,21 @@
 local InputMan = {}
-InputMan.__index = InputMan
-
-local stringspect = require('vendor/inspect')
-local json = require('vendor/dkjson')
+local metatable = {__index = InputMan}
 
 local path = debug.getinfo(1).short_src:match("(.-)[^\\/]-%.?[^%.\\/]*$")
-local InputMapper = require(path..'/inputmapper')
 
-function InputMan.new(mapping)
-    local self = {}
-    setmetatable(self, InputMan)
+-- Add callbacks to love.handlers
+love.handlers['inputpressed'] = function(a, b, c, d)
+  if love.inputpressed then love.inputpressed(a, b, c, d) end
+end
+
+love.handlers['inputreleased'] = function(a, b, c, d)
+  if love.inputreleased then love.inputreleased(a, b, c, d) end
+end
+
+-- InputMan object
+
+InputMan = setmetatable(InputMan, {__call = function(_, mapping)
+    local self = setmetatable({}, metatable)
 
     self.thread = love.thread.newThread(path..'/thread.lua')
     self.eChannel = love.thread.getChannel('input_events')
@@ -19,33 +25,40 @@ function InputMan.new(mapping)
     self.dChannel = love.thread.getChannel('input_debug')
     self.thread:start()
 
-    self:setStateMap(mapping)
+    if mapping then self:setStateMap(mapping) end
 
     return self
-end
+end})
 
 function InputMan:sendCommand(msg)
     if (msg == nil) then return end
-    self.cChannel:push(msg)
+    if self.thread:isRunning() then self.cChannel:push(msg) end
 end
 
 function InputMan:setStateMap(mapping)
     self.mapping = mapping or {}
-    self:sendCommand({"setStateMap", json.encode(self.mapping)})
+    local jsonstr = JSON.encode(self.mapping)
+    self:sendCommand({"setStateMap", jsonstr})
 end
 
 function InputMan:updateJoysticks()
     self:sendCommand({'updateJoysticks'})
 end
 
-function InputMan:reInitialize()
-    if self.thread and self.thread:isRunning() then
+function InputMan:killThread()
+    if self.thread:isRunning() then
         self.cChannel:supply({'kill'})
+        self.cChannel:demand()
     end
-    self.thread = love.thread.newThread(path..'/thread.lua')
-    self.thread:start()
+    return not self.thread:isRunning()
+end
 
-    self:setStateMap(self.mapping)
+function InputMan:reInitialize()
+    if not self.thread:isRunning() then
+      self.thread:start()
+      self:setStateMap(self.mapping)
+    end
+    return self.thread:isRunning()
 end
 
 function InputMan:processEventQueue(cb)
@@ -59,9 +72,7 @@ end
 function InputMan:printDebugQueue()
     while self.dChannel:getCount() > 0 do
         local msg = self.dChannel:pop()
-        if(type(msg) == 'string') then print(msg) else
-            print("INPUT-D", stringspect(msg))
-        end
+        love.debug.print("[InputMan-D]", msg)
     end
 end
 
@@ -79,6 +90,10 @@ function InputMan:isState(state)
     end
     self.pChannel:supply(state)
     return self.rChannel:demand()
+end
+
+function InputMan:threadStatus()
+    return self:sendCommand({'status'})
 end
 
 --

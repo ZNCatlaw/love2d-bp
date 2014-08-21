@@ -1,5 +1,5 @@
 local InputMapper = {}
-InputMapper.__index = InputMapper
+local metatable = {__index = InputMapper}
 
 -- Private variables/methods
 
@@ -8,15 +8,14 @@ local joysticks = love.joystick.getJoysticks()
 
 -- Public class
 
-function InputMapper.new(map, deadzone)
-    local self = {}
-    setmetatable(self, InputMapper)
+InputMapper = setmetatable(InputMapper,{__call = function(_, map, deadzone)
+    local self = setmetatable({}, metatable)
 
     self.deadzone = math.max(deadzone or default_deadzone, 0.05)
     self:setStateMap(map)
 
     return self
-end
+end})
 
 function InputMapper:setStateMap(map)
     if(type(map) == 'table') then
@@ -34,7 +33,7 @@ function InputMapper:genFlatMap()
             if (not flatMap[val]) then
                 flatMap[val] = state
             else
-                print(string.format("WARN: `%s` already bound to `%s`, can't bind to `%s`",
+                love.debug.print(true, string.format("WARN: `%s` already bound to `%s`, can't bind to `%s`",
                                     val, flatMap[val], state))
             end
         end
