@@ -16,7 +16,7 @@ Viewport = setmetatable(Viewport, {__call = function(_, opts)
         height = 405,
         scale  = 0,
         multiple = 1,
-        filter = 'nearest',
+        filter = {'nearest', 'nearest', 0},
         fs     = false
     }})
 
@@ -33,7 +33,7 @@ end})
 
 function Viewport:setupScreen()
     self:setScale(self.scale)
-    love.graphics.setDefaultFilter('nearest', 'nearest', 0)
+    love.graphics.setDefaultFilter(unpack(self:getFilter()))
     if(self:setFullscreen(self.fs)) then
         love.window.setMode(0, 0, {fullscreen = true, fullscreentype = "desktop"})
     else
@@ -83,8 +83,6 @@ function Viewport:fixSize(w, h)
     local cur_scale = math.max(roundDownToNearest(w / self.width, self.multiple),
                                roundDownToNearest(h / self.height, self.multiple))
 
-    print(cur_scale)
-
     local max_scale = math.min(roundDownToNearest(screen_w / self.width, self.multiple),
                                roundDownToNearest(screen_h / self.height, self.multiple))
 
@@ -132,8 +130,12 @@ function Viewport:getFilter()
     return self.filter
 end
 
-function Viewport:setFilter(filter)
-    self.filter = filter
+function Viewport:setFilter(min, mag, anisotropy)
+    if(type(min) == 'table') then
+        self.filter = min
+    else
+        self.filter = {min, mag, anisotropy}
+    end
     return self.filter
 end
 
