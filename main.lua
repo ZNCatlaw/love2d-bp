@@ -15,9 +15,19 @@
 Class      = require('vendor/class')
 JSON       = require('vendor/dkjson')
 Set        = require('vendor/set')
+
+-- Helper methods
 inspect    = require('vendor/inspect')
 math.round = require('vendor/round')
-require('vendor/deepcopy') -- table.copy and table.deepcopy
+--[[ .... ]] require('vendor/deepcopy') -- table.deepcopy
+
+-- Parts of the HUMP library
+hump = {
+    GS     = require('vendor/hump/gamestate'),
+    Signal = require('vendor/hump/signal'),
+    Timer  = require('vendor/hump/timer'),
+    Vector = require('vendor/hump/vector')
+}
 
 -- This table can store important "global" objects for the game
 -- (and keep the global namespace cleaner)
