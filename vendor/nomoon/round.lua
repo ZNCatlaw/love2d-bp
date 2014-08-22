@@ -1,5 +1,5 @@
 --[[
-    Pure-lua Math Round v0.1
+    Pure-lua Math Round v0.1.1
 
     Copyright 2014 Tim Bellefleur
 
@@ -14,6 +14,21 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
+
+    USAGE: round(value, [precision:int = 0], [mode:str = 'HALFEVEN'])
+
+    Order of 2nd and 3rd argument don't matter.
+
+    Allowable modes:
+        'HALFEVEN'    - Round half to even (default)
+        'HALFUP'      - Round half up
+        'HALFDOWN'    - Round half down
+        'HALFAWAY'    - Round half away from zero
+        'HALFTOWARDS' - Round half towards zero
+        'HALFODD'     - Round half to odd
+        'UP'          - Round up
+        'DOWN'        - Round down
+        'STOCHASTIC'  - Stochastic (random) rounding of halves
 ]]
 
 -- Rounding function locals to import
@@ -22,7 +37,10 @@ local abs    = math.abs
 local floor  = math.floor
 local ceil   = math.ceil
 local modf   = math.modf
-local random = math.random; math.randomseed(os.time()); random(); random();
+local random = math.random
+
+-- Make sure random will work
+math.randomseed(os.time()); for i=1,10 do random() end
 
 local function odd(i)
     return (i % 2 == 0)
