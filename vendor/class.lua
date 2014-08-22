@@ -1,5 +1,5 @@
 local Class = {
-    _VERSION     = '0.5.2',
+    _VERSION     = '0.5.3',
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -89,22 +89,22 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
     base_class_mt.__type = 'class'
 
     -- Define the metatable for instances of the class.
-    local metatable = {
+    local instance_mt = {
         __name = class_name,
         __type = 'instance',
         __index = base_class
     }
-    function base_class.getMetatable() return metatable end
+    function base_class.getMetatable() return instance_mt end
 
     -- Define a basic type checker
     function base_class.isInstance(obj)
-        return (getmetatable(obj) == metatable)
+        return (getmetatable(obj) == instance_mt)
     end
     -- Alias type-checker to function .is{ClassName}()
     base_class['is'..class_name] = base_class.isInstance
 
     function base_class.class() return base_class end
-    function base_class.className(obj) return metatable.__name end
+    function base_class.className(obj) return instance_mt.__name end
     function base_class.initialize() end
 
     -- Weak table to store all of the instances of the class
@@ -125,14 +125,17 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
 
     -- Setup class metatable for Class(params) constructor
     function base_class.new(...)
+        -- Send singleton if it exists.
+        if instances['singleton'] then return instances['singleton'] end
+
         -- Instantiate new class and make id from pointer
         local new_instance = {}
-        local id = tostring(new_instance):match('0x[0-9a-f]+$')
+        local id = tostring(new_instance):gsub('^table', instance_mt.__name)
         function new_instance.getID() return id end
 
         -- Now that we have the id, we can attach the metatable
         -- (in case __tostring got overwritten)
-        setmetatable(new_instance, metatable)
+        setmetatable(new_instance, instance_mt)
 
         -- Add to the instances list
         table.insert(instances, new_instance)
@@ -151,9 +154,15 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
 
     -- Instantiate singleton
     function base_class.newSingleton(...)
+        -- Send singleton if it already exists
+        if instances['singleton'] then return instances['singleton'] end
+
         -- Singleton only permitted if it's the only instance
         if(base_class.instanceCount() > 0) then return end
+
+        -- Create internal instance
         local instance = base_class.new(...)
+
         local singleton_mt = {
             __name = class_name,
             __type = 'singleton',
@@ -167,24 +176,25 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
             __newindex = instance
         }
 
-        -- Important to pawn off metamethods to instance metatable
-        local metaevents = {'__call', '__add', '__sub', '__mul', '__div',
+        -- Important to delegate metamethods to instance metatable
+        local meta_events = {'__call', '__add', '__sub', '__mul', '__div',
             '__mod', '__pow', '__unm', '__concat', '__len', '__eq', '__lt',
             '__le', '__ipairs', '__pairs', '__gc'}
-        for _,v in ipairs(metaevents) do
-            singleton_mt[v] = function(_, ...) return metatable[v](instance, ...) end
+        for _,v in ipairs(meta_events) do
+            singleton_mt[v] = function(_, ...) return instance_mt[v](instance, ...) end
         end
 
-        -- Return the singleton and disable further instantiation of the class
+        -- Create singleton table
         local singleton = setmetatable({}, singleton_mt)
-        local getSingleton = function() return singleton end
-        base_class_mt.__call = getSingleton
-        base_class.new = getSingleton
-        base_class.newSingleton = getSingleton
+
+        -- Store as a weak reference, so it's possible to GC the class back to
+        -- pristine state
+        instances['singleton'] = singleton
+
         return singleton
     end
 
-    return base_class, metatable
+    return base_class, instance_mt
 end
 })
 
@@ -235,8 +245,7 @@ do
     assert(not Animal.isInstance(nil))
     assert(not Animal.isInstance(stella))
 
-    assert(stella:getID():match('0x[0-9a-f]+$'))
-
+    assert(stella:getID():match('Plant: 0x[0-9a-f]+$'))
     assert(Plant.instanceCount() == 1)
 
     local Sing = Class('Singleton')

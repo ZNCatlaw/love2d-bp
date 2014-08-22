@@ -43,13 +43,13 @@ require('love/update')
 
 -- draw.lua -- Draw method
 --   Exports:
---     love.viewport (Viewport instance)
+--     love.viewport -- Viewport singleton
 --     love.draw()
 require('love/draw')
 
 -- input.lua -- Input callbacks
 --   Exports:
---     love.inputman (Inputman instance)
+--     love.inputman -- InputMan singleton
 --     love.inputpressed(state, value)
 --     love.inputreleased(state, value)
 --     love.joystickadded(k)
@@ -58,7 +58,7 @@ require('love/input')
 
 -- sound.lua -- Sound methods
 --   Exports:
---     love.soundman (Soundman instance)
+--     love.soundman -- SoundMan singleton
 require('love/sound')
 
 -- events.lua -- Love2d Event processing

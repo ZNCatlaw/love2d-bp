@@ -3,13 +3,7 @@ function love.processevents()
     love.event.pump()
 
     -- Pump inputman events into queue
-    if love.inputman then
-        love.inputman.processEventQueue(function(event, states)
-            for i,state in ipairs(states) do
-                love.event.push(event, state)
-            end
-        end)
-    end
+    love.inputman.processEventQueue()
 
     -- Process love events
     for e,a,b,c,d in love.event.poll() do

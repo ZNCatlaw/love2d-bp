@@ -2,6 +2,8 @@ local InputMan = Class('InputMan')
 
 local path = debug.getinfo(1).short_src:match("(.-)[^\\/]-%.?[^%.\\/]*$")
 
+local remove = table.remove
+
 -- Add callbacks to love.handlers
 love.handlers['inputpressed'] = function(a, b, c, d)
   if love.inputpressed then love.inputpressed(a, b, c, d) end
@@ -56,11 +58,10 @@ function InputMan:reInitialize()
     return self.thread:isRunning()
 end
 
-function InputMan:processEventQueue(cb)
+function InputMan:processEventQueue()
     while self.eChannel:getCount() > 0 do
         local msg = self.eChannel:pop()
-        local event = table.remove(msg, 1)
-        cb(event, msg)
+        love.event.push(unpack(msg))
     end
 end
 

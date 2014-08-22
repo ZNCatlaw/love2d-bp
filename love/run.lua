@@ -1,13 +1,5 @@
 function love.run()
-    -- Seed all the PRNGs!
-    math.randomseed(os.time())
-    love.math.setRandomSeed(os.time(), os.time())
-    for i=1,10 do math.random(); love.math.random() end
-
-    love.event.pump()
-    love.load(arg)
-    love.timer.step()
-
+    -- Main loop variables
     local t = 0
     local dt = 0
     local updateCount = 0
@@ -16,6 +8,22 @@ function love.run()
     local nextTime = 0
     local updateRate = 0
     local maxFrameskip = 4
+
+    -- Imports!
+    local insert = table.insert
+    local concat = table.concat
+
+    -- Seed all the PRNGs!
+    math.randomseed(os.time())
+    love.math.setRandomSeed(os.time(), os.time())
+    for i=1,10 do math.random(); love.math.random() end
+
+    -- load.lua : Load the game!
+    love.event.pump()
+    love.load(arg)
+
+    -- Begin the timer!
+    love.timer.step()
 
     -- Main loop (fixed-rate update with unlocked FPS and frameskip)
     while true do
@@ -31,10 +39,10 @@ function love.run()
             if not love.processevents() then
                 -- Quit signal received!
                 love.audio.stop()
-                love.soundman:killThread()
-                love.inputman:killThread()
-                love.timer.sleep(0.05)
-                return
+                love.soundman.killThread()
+                love.inputman.killThread()
+                love.timer.sleep(0.05) -- thread/sound device cleanup
+                return -- quit process
             end
 
             -- update.lua : love.update(dt)
@@ -50,19 +58,25 @@ function love.run()
             love.graphics.origin()
 
             -- draw.lua : love.draw()
-            love.draw()
+            love.viewport.pushScale()
+            local debugInfo = love.draw()
+            love.viewport.popScale()
 
             -- Print optional debug information
-            if(debugInfo and #debugInfo > 0) then
+            if(debugInfo) then
                 local printtable = {}
-                for k,v in pairs(debug) do
-                    insert(printtable, k .. ": " .. v .. "\n")
+                if(type(debugInfo) == 'table') then
+                    for k,v in pairs(debugInfo) do
+                        insert(printtable, k .. ": " .. v .. "\n")
+                    end
+                else
+                    insert(printtable, debugInfo)
                 end
                 local r,g,b,a = love.graphics.getColor()
                 love.graphics.setColor(0,0,0)
-                love.graphics.print(table.concat(printtable), 1, 1)
+                love.graphics.print(concat(printtable), 1, 1)
                 love.graphics.setColor(r,g,b,a)
-                love.graphics.print(table.concat(printtable))
+                love.graphics.print(concat(printtable))
             end
 
             -- Present the graphics
