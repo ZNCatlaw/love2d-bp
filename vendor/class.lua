@@ -1,5 +1,5 @@
 local Class = {
-    _VERSION     = '0.5.3',
+    _VERSION     = '0.5.4',
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -109,7 +109,11 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
 
     -- Weak table to store all of the instances of the class
     local instances = setmetatable({}, {__mode = 'v'})
-    function base_class.instanceCount() return #instances end
+    function base_class.instanceCount()
+        local count = 0
+        for _,_ in pairs(instances) do count = count + 1 end
+        return count
+    end
 
     -- Define private store and accessor method
     local private = setmetatable({}, {__mode = "k"})
@@ -250,7 +254,7 @@ do
 
     local Sing = Class('Singleton')
     assert(Sing.new())
-    assert(not Sing.newSingleton())
+    assert(Sing.newSingleton() == nil)
 
     local Sing2 = Class('Singleton2')
     local sing2i = Sing2.newSingleton()
