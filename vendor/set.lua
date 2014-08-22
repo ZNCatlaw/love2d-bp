@@ -399,6 +399,8 @@ do
     assert(lset:size() == 2)
     assert(not lset:contains("fourth"))
 end
+-- This should clean up the instance/private tables from the tests
+collectgarbage()
 
 ---------------------
 -- Return the Class

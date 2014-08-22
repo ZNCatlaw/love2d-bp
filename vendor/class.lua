@@ -1,5 +1,5 @@
 local Class = {
-    _VERSION     = '0.5.0',
+    _VERSION     = '0.5.2',
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -22,7 +22,7 @@ local Class = {
         Passing a table into the private() method will set the private store to
         that table.
 
-        You can also instantiate a singleton via .newSingleton(...). This
+        You can also instantiate as a singleton via .newSingleton(...). This
         enforces one instance only, and allows instance methods to be called
         without `self` syntactic sugar (e.g. `.method(params)`).
 
@@ -79,6 +79,15 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
         base_class = {}
     end
 
+    -- Create or add to the base class' metatable
+    local base_class_mt = getmetatable(base_class)
+    if(not base_class_mt) then
+        base_class_mt = {}
+        setmetatable(base_class, base_class_mt)
+    end
+    base_class_mt.__name = class_name
+    base_class_mt.__type = 'class'
+
     -- Define the metatable for instances of the class.
     local metatable = {
         __name = class_name,
@@ -126,7 +135,7 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
         setmetatable(new_instance, metatable)
 
         -- Add to the instances list
-        table.insert(instances,new_instance)
+        table.insert(instances, new_instance)
 
         -- Create an empty private store for the instance
         private[new_instance] = {}
@@ -158,11 +167,21 @@ setmetatable(Class, {__call = function(_, class_name, existing_table)
             __newindex = instance
         }
 
-        -- Disable instantiation of class
-        function base_class.new() return end
+        -- Important to pawn off metamethods to instance metatable
+        local metaevents = {'__call', '__add', '__sub', '__mul', '__div',
+            '__mod', '__pow', '__unm', '__concat', '__len', '__eq', '__lt',
+            '__le', '__ipairs', '__pairs', '__gc'}
+        for _,v in ipairs(metaevents) do
+            singleton_mt[v] = function(_, ...) return metatable[v](instance, ...) end
+        end
 
-        -- Return the singleton and
-        return setmetatable({}, singleton_mt)
+        -- Return the singleton and disable further instantiation of the class
+        local singleton = setmetatable({}, singleton_mt)
+        local getSingleton = function() return singleton end
+        base_class_mt.__call = getSingleton
+        base_class.new = getSingleton
+        base_class.newSingleton = getSingleton
+        return singleton
     end
 
     return base_class, metatable
@@ -218,14 +237,19 @@ do
 
     assert(stella:getID():match('0x[0-9a-f]+$'))
 
+    assert(Plant.instanceCount() == 1)
+
     local Sing = Class('Singleton')
     assert(Sing.new())
     assert(not Sing.newSingleton())
 
     local Sing2 = Class('Singleton2')
-    assert(Sing2.newSingleton())
-    assert(not Sing2.new())
+    local sing2i = Sing2.newSingleton()
+    assert(sing2i)
+    assert(Sing2.new() == sing2i)
 end
+-- This should clean up the instance/private tables from the tests
+collectgarbage()
 
 --
 

@@ -1,6 +1,5 @@
 -- Set-up global Input objects.
-local InputMan = require('libs/inputman')
-love.inputman = InputMan.newSingleton()
+love.inputman = require('libs/inputman').newSingleton()
 
 -- Screw the literally zillions of input callbacks, we're going to use two
 -- custom events instead.
