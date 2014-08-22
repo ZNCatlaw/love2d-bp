@@ -1,5 +1,5 @@
 local Class = {
-    _VERSION     = '0.6.0',
+    _VERSION     = '0.6.1',
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -195,6 +195,7 @@ end
 ---------------
 -- Unit Tests
 ---------------
+--[[
 do
     local WrongClassName = Class('1Classname')
     assert(WrongClassName == nil)
@@ -253,6 +254,7 @@ do
 end
 -- This should clean up the instance/private tables from the tests
 collectgarbage()
+-- End Debug Comments ]]--
 
 --
 
