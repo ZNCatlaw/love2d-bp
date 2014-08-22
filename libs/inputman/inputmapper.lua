@@ -1,4 +1,4 @@
-local Class = require('vendor/class')
+local Class = require('vendor/nomoon/class')
 local InputMapper = Class('InputMapper')
 
 -- Private variables/methods

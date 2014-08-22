@@ -3,7 +3,7 @@ require('love.timer')
 require('love.joystick')
 require('love.keyboard')
 local JSON = require('vendor/dkjson')
-local Set = require('vendor/set')
+local Set = require('vendor/nomoon/set')
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
 local inputmapper = require(path..'inputmapper').new()

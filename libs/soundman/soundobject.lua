@@ -1,4 +1,4 @@
-local Class = require('vendor/class')
+local Class = require('vendor/nomoon/class')
 local SoundObject = Class('SoundObject')
 
 local SoundObjects = {}
