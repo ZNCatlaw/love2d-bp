@@ -1,5 +1,5 @@
 --[[
-    Pure-lua Math Round v0.1.1
+    Pure-lua Math Round v0.1.2
 
     Copyright 2014 Tim Bellefleur
 
@@ -73,30 +73,30 @@ local function pickarg(ltype, arg1, arg2, default)
 end
 
 local function round(value, arg2, arg3)
-    if(type(value) ~= "number") then return end
+    if(type(value) ~= 'number') then return end
 
-    local precision = pickarg("number", arg2, arg3, 0)
-    local mode = pickarg("string", arg2, arg3, "HALFEVEN")
+    local precision = pickarg('number', arg2, arg3, 0)
+    local mode = pickarg('string', arg2, arg3, 'HALFEVEN')
     local mult = 10^floor(max(0, precision))
     local i, f = modf(value * mult)
 
-    if(mode == "HALFEVEN") then
+    if(mode == 'HALFEVEN') then
         f = odd(i) and toward(f) or away(f)
-    elseif(mode == "HALFUP") then
+    elseif(mode == 'HALFUP') then
         f = halfup(f)
-    elseif(mode == "HALFDOWN") then
+    elseif(mode == 'HALFDOWN') then
         f = halfdown(f)
-    elseif(mode == "HALFAWAY") then
+    elseif(mode == 'HALFAWAY') then
         f = away(f)
-    elseif(mode == "HALFTOWARD") then
+    elseif(mode == 'HALFTOWARD') then
         f = toward(f)
-    elseif(mode == "HALFODD") then
+    elseif(mode == 'HALFODD') then
         f = odd(i) and away(f) or toward(f)
-    elseif(mode == "STOCHASTIC") then
+    elseif(mode == 'STOCHASTIC') then
         f = (random(0,1) == 0) and halfup(f) or halfdown(f)
-    elseif(mode == "UP") then
+    elseif(mode == 'UP') then
         f = ceil(f)
-    elseif(mode == "DOWN") then
+    elseif(mode == 'DOWN') then
         f = floor(f)
     else
         return
@@ -120,88 +120,88 @@ assert(round(-23.50) == -24)
 assert(round(-24.50) == -24)
 assert(round(-24.51) == -25)
 
-assert(round(23.49, "HALFUP") == 23)
-assert(round(23.50, "HALFUP") == 24)
-assert(round(24.50, "HALFUP") == 25)
-assert(round(24.51, "HALFUP") == 25)
-assert(round(24.51, "HALFUP", 1) == 24.5)
-assert(round(24.51, "HALF", 1) == nil)
+assert(round(23.49, 'HALFUP') == 23)
+assert(round(23.50, 'HALFUP') == 24)
+assert(round(24.50, 'HALFUP') == 25)
+assert(round(24.51, 'HALFUP') == 25)
+assert(round(24.51, 'HALFUP', 1) == 24.5)
+assert(round(24.51, 'HALF', 1) == nil)
 
-assert(round(-23.49, 0, "HALFUP") == -23)
-assert(round(-23.50, 0, "HALFUP") == -23)
-assert(round(-24.50, 0, "HALFUP") == -24)
-assert(round(-24.51, 0, "HALFUP") == -25)
+assert(round(-23.49, 0, 'HALFUP') == -23)
+assert(round(-23.50, 0, 'HALFUP') == -23)
+assert(round(-24.50, 0, 'HALFUP') == -24)
+assert(round(-24.51, 0, 'HALFUP') == -25)
 
-assert(round(23.49, 0, "HALFDOWN") == 23)
-assert(round(23.50, 0, "HALFDOWN") == 23)
-assert(round(24.50, 0, "HALFDOWN") == 24)
-assert(round(24.51, 0, "HALFDOWN") == 25)
+assert(round(23.49, 0, 'HALFDOWN') == 23)
+assert(round(23.50, 0, 'HALFDOWN') == 23)
+assert(round(24.50, 0, 'HALFDOWN') == 24)
+assert(round(24.51, 0, 'HALFDOWN') == 25)
 
-assert(round(-23.49, 0, "HALFDOWN") == -23)
-assert(round(-23.50, 0, "HALFDOWN") == -24)
-assert(round(-24.50, 0, "HALFDOWN") == -25)
-assert(round(-24.51, 0, "HALFDOWN") == -25)
+assert(round(-23.49, 0, 'HALFDOWN') == -23)
+assert(round(-23.50, 0, 'HALFDOWN') == -24)
+assert(round(-24.50, 0, 'HALFDOWN') == -25)
+assert(round(-24.51, 0, 'HALFDOWN') == -25)
 
-assert(round(23.49, 0, "HALFAWAY") == 23)
-assert(round(23.50, 0, "HALFAWAY") == 24)
-assert(round(24.50, 0, "HALFAWAY") == 25)
-assert(round(24.51, 0, "HALFAWAY") == 25)
+assert(round(23.49, 0, 'HALFAWAY') == 23)
+assert(round(23.50, 0, 'HALFAWAY') == 24)
+assert(round(24.50, 0, 'HALFAWAY') == 25)
+assert(round(24.51, 0, 'HALFAWAY') == 25)
 
-assert(round(-23.49, 0, "HALFAWAY") == -23)
-assert(round(-23.50, 0, "HALFAWAY") == -24)
-assert(round(-24.50, 0, "HALFAWAY") == -25)
-assert(round(-24.51, 0, "HALFAWAY") == -25)
+assert(round(-23.49, 0, 'HALFAWAY') == -23)
+assert(round(-23.50, 0, 'HALFAWAY') == -24)
+assert(round(-24.50, 0, 'HALFAWAY') == -25)
+assert(round(-24.51, 0, 'HALFAWAY') == -25)
 
-assert(round(23.49, 0, "HALFTOWARD") == 23)
-assert(round(23.50, 0, "HALFTOWARD") == 23)
-assert(round(24.50, 0, "HALFTOWARD") == 24)
-assert(round(24.51, 0, "HALFTOWARD") == 25)
+assert(round(23.49, 0, 'HALFTOWARD') == 23)
+assert(round(23.50, 0, 'HALFTOWARD') == 23)
+assert(round(24.50, 0, 'HALFTOWARD') == 24)
+assert(round(24.51, 0, 'HALFTOWARD') == 25)
 
-assert(round(-23.49, 0, "HALFTOWARD") == -23)
-assert(round(-23.50, 0, "HALFTOWARD") == -23)
-assert(round(-24.50, 0, "HALFTOWARD") == -24)
-assert(round(-24.51, 0, "HALFTOWARD") == -25)
+assert(round(-23.49, 0, 'HALFTOWARD') == -23)
+assert(round(-23.50, 0, 'HALFTOWARD') == -23)
+assert(round(-24.50, 0, 'HALFTOWARD') == -24)
+assert(round(-24.51, 0, 'HALFTOWARD') == -25)
 
-assert(round(0.5, 0, "HALFODD") == 1)
-assert(round(-0.5, 0, "HALFODD") == -1)
-assert(round(1.5, 0, "HALFODD") == 1)
-assert(round(-1.5, 0, "HALFODD") == -1)
+assert(round(0.5, 0, 'HALFODD') == 1)
+assert(round(-0.5, 0, 'HALFODD') == -1)
+assert(round(1.5, 0, 'HALFODD') == 1)
+assert(round(-1.5, 0, 'HALFODD') == -1)
 
-assert(round(22.49, 0, "HALFODD") == 22)
-assert(round(22.50, 0, "HALFODD") == 23)
-assert(round(23.50, 0, "HALFODD") == 23)
-assert(round(23.51, 0, "HALFODD") == 24)
+assert(round(22.49, 0, 'HALFODD') == 22)
+assert(round(22.50, 0, 'HALFODD') == 23)
+assert(round(23.50, 0, 'HALFODD') == 23)
+assert(round(23.51, 0, 'HALFODD') == 24)
 
-assert(round(-22.49, 0, "HALFODD") == -22)
-assert(round(-22.50, 0, "HALFODD") == -23)
-assert(round(-23.50, 0, "HALFODD") == -23)
-assert(round(-23.51, 0, "HALFODD") == -24)
+assert(round(-22.49, 0, 'HALFODD') == -22)
+assert(round(-22.50, 0, 'HALFODD') == -23)
+assert(round(-23.50, 0, 'HALFODD') == -23)
+assert(round(-23.51, 0, 'HALFODD') == -24)
 
 local accumulator, rounds = 0, 100000
 for i=1,rounds do
-    accumulator = accumulator + round(23.5, 0, "STOCHASTIC")
+    accumulator = accumulator + round(23.5, 0, 'STOCHASTIC')
 end
 assert(abs(accumulator/rounds - 23.5) < 0.01)
 
-assert(round(22.49, 0, "UP") == 23)
-assert(round(22.50, 0, "UP") == 23)
-assert(round(23.50, 0, "UP") == 24)
-assert(round(23.51, 0, "UP") == 24)
+assert(round(22.49, 0, 'UP') == 23)
+assert(round(22.50, 0, 'UP') == 23)
+assert(round(23.50, 0, 'UP') == 24)
+assert(round(23.51, 0, 'UP') == 24)
 
-assert(round(-22.49, 0, "UP") == -22)
-assert(round(-22.50, 0, "UP") == -22)
-assert(round(-23.50, 0, "UP") == -23)
-assert(round(-23.51, 0, "UP") == -23)
+assert(round(-22.49, 0, 'UP') == -22)
+assert(round(-22.50, 0, 'UP') == -22)
+assert(round(-23.50, 0, 'UP') == -23)
+assert(round(-23.51, 0, 'UP') == -23)
 
-assert(round(22.49, 0, "DOWN") == 22)
-assert(round(22.50, 0, "DOWN") == 22)
-assert(round(23.50, 0, "DOWN") == 23)
-assert(round(23.51, 0, "DOWN") == 23)
+assert(round(22.49, 0, 'DOWN') == 22)
+assert(round(22.50, 0, 'DOWN') == 22)
+assert(round(23.50, 0, 'DOWN') == 23)
+assert(round(23.51, 0, 'DOWN') == 23)
 
-assert(round(-22.49, 0, "DOWN") == -23)
-assert(round(-22.50, 0, "DOWN") == -23)
-assert(round(-23.50, 0, "DOWN") == -24)
-assert(round(-23.51, 0, "DOWN") == -24)
+assert(round(-22.49, 0, 'DOWN') == -23)
+assert(round(-22.50, 0, 'DOWN') == -23)
+assert(round(-23.50, 0, 'DOWN') == -24)
+assert(round(-23.51, 0, 'DOWN') == -24)
 
 --
 
