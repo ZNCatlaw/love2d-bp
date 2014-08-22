@@ -1,4 +1,4 @@
-local InputMan = Class('InputMan')
+local InputMan = Class.new('InputMan')
 
 local path = debug.getinfo(1).short_src:match("(.-)[^\\/]-%.?[^%.\\/]*$")
 

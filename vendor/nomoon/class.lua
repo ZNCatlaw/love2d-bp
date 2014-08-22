@@ -1,11 +1,11 @@
 local Class = {
-    _VERSION     = '0.5.4',
+    _VERSION     = '0.6.0',
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
 
         Simply define a class with the syntax:
-            `MyClass = Class(classname, [existing_table])`
+            `MyClass = Class.new(classname, [existing_table])`
         Classname must start with a letter and consist of letters and
         numbers with no spaces. If 'existing_table' is provided, class features
         will be added to that table.
@@ -30,7 +30,7 @@ local Class = {
 
         Complete Example:
             local Class = require('class')
-            local Animal = Class('animal')
+            local Animal = Class.new('animal') -- also Class()
 
             function Animal:initialize(kind)
                 self.kind = kind
@@ -61,146 +61,136 @@ local Class = {
     ]]
 }
 
+local function __NULL__() end
+
 ----------------------
 -- Class Constructor
 ----------------------
 
-setmetatable(Class, {__call = function(_, class_name, existing_table)
-    if(not class_name:match("^%a%w*$")) then
-        return nil, "Illegal class name."
-    end
+function Class.new(class_name, existing_table)
+    if(not class_name:match("^%a%w*$")) then return end
     class_name = class_name:gsub("^%l", string.upper)
 
     -- Define a base class table.
-    local base_class
-    if(type(existing_table) == 'table') then
-        base_class = existing_table
-    else
-        base_class = {}
-    end
+    local class = type(existing_table) == 'table' and existing_table or {}
+    local id = '{C}'..tostring(class):gsub('^table', class_name)
 
-    -- Create or add to the base class' metatable
-    local base_class_mt = getmetatable(base_class)
-    if(not base_class_mt) then
-        base_class_mt = {}
-        setmetatable(base_class, base_class_mt)
-    end
-    base_class_mt.__name = class_name
-    base_class_mt.__type = 'class'
+    -- Create or retrieve the base class' metatable
+    local class_mt = getmetatable(class) or {}
+    setmetatable(class, class_mt)
 
     -- Define the metatable for instances of the class.
-    local instance_mt = {
-        __name = class_name,
-        __type = 'instance',
-        __index = base_class
-    }
-    function base_class.getMetatable() return instance_mt end
+    local instance_mt = {__index = class,
+        __tostring = function(obj) return obj.getID() end}
 
-    -- Define a basic type checker
-    function base_class.isInstance(obj)
-        return (getmetatable(obj) == instance_mt)
-    end
-    -- Alias type-checker to function .is{ClassName}()
-    base_class['is'..class_name] = base_class.isInstance
-
-    function base_class.class() return base_class end
-    function base_class.className(obj) return instance_mt.__name end
-    function base_class.initialize() end
+    -- Reflection/typecheck methods
+    function class.getID() return id end
+    function class.isInstance(obj) return getmetatable(obj) == instance_mt end
+    function class.class() return class end
+    function class.className() return class_name end
+    class.initialize = __NULL__
 
     -- Weak table to store all of the instances of the class
     local instances = setmetatable({}, {__mode = 'v'})
-    function base_class.instanceCount()
+    function class.classInstanceCount()
         local count = 0
         for _,_ in pairs(instances) do count = count + 1 end
         return count
     end
 
-    -- Define private store and accessor method
-    local private = setmetatable({}, {__mode = "k"})
-    private[base_class] = {}
-    function base_class.private(instance, value)
-        if(base_class.isInstance(instance) or instance == base_class) then
-            if(value and type(value) == 'table') then
-                private[instance] = value
-            end
-            return private[instance]
+    -- Private store and accessor method
+    local private = setmetatable({class = {}}, {__mode = "k"})
+    function class.private(obj, val)
+        if(class.isInstance(obj) or obj == class) then
+            if(type(val) == 'table') then private[obj] = val end
+            return private[obj]
         end
     end
 
-    -- Setup class metatable for Class(params) constructor
-    function base_class.new(...)
-        -- Send singleton if it exists.
+    -- Class constructor
+    function class.new(...)
+        -- Return singleton if it exists
         if instances['singleton'] then return instances['singleton'] end
 
         -- Instantiate new class and make id from pointer
-        local new_instance = {}
-        local id = tostring(new_instance):gsub('^table', instance_mt.__name)
-        function new_instance.getID() return id end
+        local instance = {}
+        local id = '{I}'..tostring(instance):gsub('^table', class_name)
+        function instance.getID() return id end
 
         -- Now that we have the id, we can attach the metatable
         -- (in case __tostring got overwritten)
-        setmetatable(new_instance, instance_mt)
+        setmetatable(instance, instance_mt)
 
         -- Add to the instances list
-        table.insert(instances, new_instance)
+        table.insert(instances, instance)
 
         -- Create an empty private store for the instance
-        private[new_instance] = {}
+        private[instance] = {}
 
         -- Run user-defined constructor
-        base_class.initialize(new_instance, ...)
+        class.initialize(instance, ...)
 
         -- Override .initialize on instance to prevent re-initializing
-        function new_instance.initialize() return end
+        instance.initialize = __NULL__
 
-        return new_instance
+        return instance
     end
 
-    -- Instantiate singleton
-    function base_class.newSingleton(...)
-        -- Send singleton if it already exists
+    -- Singleton constructor
+    function class.newSingleton(...)
+        -- Return singleton if it exists
         if instances['singleton'] then return instances['singleton'] end
 
         -- Singleton only permitted if it's the only instance
-        if(base_class.instanceCount() > 0) then return end
+        if(class.classInstanceCount() > 0) then return end
 
         -- Create internal instance
-        local instance = base_class.new(...)
+        local instance = class.new(...)
+        local id = instance.getID():gsub('{I}','{S}')
+        function instance.getID() return id end
 
+        -- Create singleton metatable that proxies to internal instance
         local singleton_mt = {
-            __name = class_name,
-            __type = 'singleton',
             __index = function(t, k)
-                local value = instance[k]
-                if(type(value) == 'function') then
-                    return function(...) return value(instance, ...) end
+                local val = instance[k]
+                if(type(val) == 'function') then
+                    return function(...) return val(instance, ...) end
                 end
-                return value
+                return val
             end,
-            __newindex = instance
+            __newindex = function(t, k, v)
+                instance[k] = v
+            end
         }
 
-        -- Important to delegate metamethods to instance metatable
-        local meta_events = {'__call', '__add', '__sub', '__mul', '__div',
+        -- Delegate metamethods to internal instance
+        for _,v in ipairs({'__call', '__add', '__sub', '__mul', '__div',
             '__mod', '__pow', '__unm', '__concat', '__len', '__eq', '__lt',
-            '__le', '__ipairs', '__pairs', '__gc'}
-        for _,v in ipairs(meta_events) do
-            singleton_mt[v] = function(_, ...) return instance_mt[v](instance, ...) end
+            '__le', '__ipairs', '__pairs', '__gc', '__tostring'}) do
+            singleton_mt[v] = function(_, ...)
+                return getmetatable(instance)[v](instance, ...)
+            end
         end
 
-        -- Create singleton table
+        -- Create singleton table, store as a weak reference so it's possible
+        --  to GC the class back to pristine state
         local singleton = setmetatable({}, singleton_mt)
-
-        -- Store as a weak reference, so it's possible to GC the class back to
-        -- pristine state
         instances['singleton'] = singleton
 
         return singleton
     end
 
-    return base_class, instance_mt
+    return class, instance_mt
 end
-})
+setmetatable(Class, {__call = function(_, ...) return Class.new(...) end})
+
+--
+--  Helper function for parameter table with defaults
+--
+function Class.defaults(defaults, params)
+    local mt = {__index = defaults}
+    return setmetatable(params or {}, mt)
+end
 
 ---------------
 -- Unit Tests
@@ -225,16 +215,13 @@ do
     assert(Animal.class() == Animal)
     assert(Animal:class() == Animal)
     assert(mrEd:class() == Animal)
-
-    assert(Animal.isInstance(mrEd))
-    assert(Animal.isAnimal(mrEd))
     assert(mrEd:className() == "Animal")
 
     local gunther = Animal.new('penguin')
     assert(gunther:initialize() == nil)
     assert(gunther:getKind() == 'penguin')
 
-    local Plant = Class('Plant')
+    local Plant = Class.new('Plant')
 
     function Plant:initialize(edible) self.edible = edible end
 
@@ -243,16 +230,16 @@ do
     local stella = Plant.new(false)
     assert(not stella:isEdible())
     assert(stella:className() == "Plant")
-    assert(Plant.isPlant(stella))
 
     assert(not stella.getKind)
     assert(not Animal.isInstance(nil))
     assert(not Animal.isInstance(stella))
 
-    assert(stella:getID():match('Plant: 0x[0-9a-f]+$'))
-    assert(Plant.instanceCount() == 1)
+    assert(stella:getID():match('^{I}Plant: 0x[0-9a-f]+$'))
+    assert(stella:getID() == tostring(stella))
+    assert(Plant.classInstanceCount() == 1)
 
-    local Sing = Class('Singleton')
+    local Sing = Class.new('Singleton')
     assert(Sing.new())
     assert(Sing.newSingleton() == nil)
 
@@ -260,6 +247,9 @@ do
     local sing2i = Sing2.newSingleton()
     assert(sing2i)
     assert(Sing2.new() == sing2i)
+    assert(sing2i:getID():match('{S}Singleton2: 0x[0-9a-f]+$'))
+    assert(sing2i:getID() == tostring(sing2i))
+    assert(sing2i.class() == Sing2)
 end
 -- This should clean up the instance/private tables from the tests
 collectgarbage()

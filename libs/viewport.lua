@@ -1,23 +1,21 @@
-local Viewport = Class('Viewport')
+local Viewport = Class.new('Viewport')
 
 local roundDownToNearest = function(val, multiple)
     return multiple * (math.floor(val/multiple))
 end
 
-local default_options = {__index={
-    width  = 720,
-    height = 405,
-    scale  = 0,
-    multiple = 1,
-    filter = {'nearest', 'nearest', 0},
-    fs     = false
-}}
-
 --
 -- Instantiate a viewport with Viewport(options)
 --
 function Viewport:initialize(opts)
-    opts = setmetatable(opts or {}, default_options)
+    opts = Class.defaults({
+        width  = 720,
+        height = 405,
+        scale  = 0,
+        multiple = 1,
+        filter = {'nearest', 'nearest', 0},
+        fs     = false
+    }, opts)
 
     self:setWidth(opts.width)
     self:setHeight(opts.height)

@@ -1,5 +1,5 @@
 local Class = require('vendor/nomoon/class')
-local SoundObject = Class('SoundObject')
+local SoundObject = Class.new('SoundObject')
 
 local SoundObjects = {}
 local SoundResources = {}

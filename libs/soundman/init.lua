@@ -1,4 +1,4 @@
-local SoundMan = Class('SoundMan')
+local SoundMan = Class.new('SoundMan')
 
 local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
 

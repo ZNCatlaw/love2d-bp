@@ -1,5 +1,5 @@
 local Class = require('vendor/nomoon/class')
-local InputMapper = Class('InputMapper')
+local InputMapper = Class.new('InputMapper')
 
 -- Private variables/methods
 
