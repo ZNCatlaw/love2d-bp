@@ -1,5 +1,5 @@
 local Set = {
-    _VERSION     = 'set.lua 0.8.1',
+    _VERSION     = 'set.lua 0.8.2',
     _DESCRIPTION = 'Simple Set operations for Lua',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -265,22 +265,14 @@ end
 --    parameters aliases :contains(items...)
 --
 function metatable:__call(...)
-    if(select('#', ...) > 0) then
-        return self:contains(...)
-    else
-        return self:items()
-    end
+    return (select('#', ...) == 0) and self:items() or self:contains(...)
 end
 
 --
 --  The equality operator will attempt to function on other sets.
 --
 function metatable:__eq(param)
-    if Set.isInstance(param) then
-        return self:contains(param:items())
-    else
-        return false
-    end
+    return Set.isInstance(param) and self:contains(param:items())
 end
 
 --
@@ -314,14 +306,12 @@ metatable.__len = Set.size
 -- Lua 5.2+ Iterating over a Set using pairs or ipairs (returns #, value)
 --
 function metatable:__ipairs()
-    local i = 0
     local pitems = self:private().items
     local n = #pitems
+    local i = 1
     return function()
+        if(i <= n) then return i, pitems[i] end
         i = i + 1
-        if(i <= n) then
-            return i, pitems[i]
-        end
     end
 end
 

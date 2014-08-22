@@ -3,7 +3,6 @@ local Class = {
     _DESCRIPTION = 'Very simple class definition helper',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
-
         Simply define a class with the syntax:
             `MyClass = Class.new(classname, [existing_table])`
         Classname must start with a letter and consist of letters and
