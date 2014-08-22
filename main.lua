@@ -8,9 +8,11 @@
 --  GLOBAL LIBRARIES/CLASSES
 --
 --  ========================
-Class = require('vendor/nomoon/class')
-Set   = require('vendor/nomoon/set')
-JSON  = require('vendor/dkjson')
+Class  = require('vendor/nomoon/class')
+Set    = require('vendor/nomoon/set')
+JSON   = require('vendor/dkjson')
+SLAXML = require('vendor/slaxml/slaxdom')
+Sfxr   = require('vendor/sfxr')
 
 -- Kikito's best libraries
 kikito = {
@@ -32,6 +34,7 @@ hump = {
 }
 
 -- Helper methods
+serialize  = require('vendor/ser')
 inspect    = kikito.inspect
 math.round = require('vendor/nomoon/round')
 --[[ .... ]] require('vendor/deepcopy') -- table.deepcopy
@@ -45,7 +48,11 @@ table.copy = table.deepcopy
 
 -- This table can store important "global" objects for the game
 -- (and keep the global namespace cleaner)
-game = {}
+game = {
+    states = {},
+    objects = {},
+    graphics = {} -- Just some ideas...
+}
 
 -- conf.lua -- Initial configuration (already loaded)
 --   Exports:
