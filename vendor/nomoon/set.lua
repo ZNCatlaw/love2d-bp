@@ -1,5 +1,5 @@
 local Set = {
-    _VERSION     = 'set.lua 0.8',
+    _VERSION     = 'set.lua 0.8.1',
     _DESCRIPTION = 'Simple Set operations for Lua',
     _URL         = 'https://github.com/nomoon',
     _LONGDESC    = [[
@@ -86,7 +86,7 @@ local Class = require(path..'class')
 --
 --  Class-ify Set table, get metatable (filled below)
 --
-local _, metatable = Class('Set', Set)
+local Set, metatable = Class.new('Set', Set)
 
 --
 --  Helper: Flattens/sanitizes a table into its values.
@@ -330,6 +330,7 @@ metatable.__pairs = metatable.__ipairs
 ---------------
 -- Unit Tests
 ---------------
+--[[
 do
     -- create the empty set
     local set = Set.new()
@@ -401,9 +402,8 @@ do
 end
 -- This should clean up the instance/private tables from the tests
 collectgarbage()
+-- End Test Block ]]--
 
----------------------
--- Return the Class
----------------------
+--
 
 return Set

@@ -254,7 +254,7 @@ do
 end
 -- This should clean up the instance/private tables from the tests
 collectgarbage()
--- End Debug Comments ]]--
+-- End Test Block ]]--
 
 --
 

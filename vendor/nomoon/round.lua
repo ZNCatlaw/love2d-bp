@@ -1,5 +1,5 @@
 --[[
-    Pure-lua Math Round v0.1.2
+    Pure-lua Math Round v0.1.3
 
     Copyright 2014 Tim Bellefleur
 
@@ -105,6 +105,10 @@ local function round(value, arg2, arg3)
     return (i + f) / mult
 end
 
+---------------
+-- Unit Tests
+---------------
+--[[
 assert(round(0.5) == 0)
 assert(round(1.5) == 2)
 assert(round(-0.5) == 0)
@@ -202,6 +206,7 @@ assert(round(-22.49, 0, 'DOWN') == -23)
 assert(round(-22.50, 0, 'DOWN') == -23)
 assert(round(-23.50, 0, 'DOWN') == -24)
 assert(round(-23.51, 0, 'DOWN') == -24)
+-- End Test Block ]]--
 
 --
 
