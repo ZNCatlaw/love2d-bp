@@ -35,6 +35,7 @@ hump = {
 inspect    = kikito.inspect
 math.round = require('vendor/round')
 --[[ .... ]] require('vendor/deepcopy') -- table.deepcopy
+table.copy = table.deepcopy
 
 --  ========================
 --
