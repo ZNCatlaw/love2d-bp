@@ -1,10 +1,8 @@
 local SoundMan = Class.new('SoundMan')
 
-local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
-
 function SoundMan:initialize()
     self.shortcuts = {}
-    self.thread = love.thread.newThread(path..'thread.lua')
+    self.thread = love.thread.newThread('libs/soundman/thread.lua')
     self.cChannel = love.thread.getChannel('sound_commands')
     self.dChannel = love.thread.getChannel('sound_debug')
     self.thread:start()

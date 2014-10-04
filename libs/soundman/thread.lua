@@ -3,13 +3,11 @@ require('love.filesystem')
 require('love.audio')
 require('love.sound')
 
-local path = string.match(debug.getinfo(1).short_src,"(.-)[^\\/]-%.?[^%.\\/]*$")
-
 local insert = table.insert
 local remove = table.remove
 local gmatch = string.gmatch
 
-local SoundObject, SoundObjects, SoundResources = unpack(require(path..'soundobject'))
+local SoundObject, SoundObjects, SoundResources = unpack(require('libs/soundman/soundobject'))
 
 -- All the important numbers/counters
 

@@ -1,7 +1,4 @@
 local InputMan = Class.new('InputMan')
-
-local path = debug.getinfo(1).short_src:match("(.-)[^\\/]-%.?[^%.\\/]*$")
-
 local remove = table.remove
 
 -- Add callbacks to love.handlers
@@ -16,7 +13,7 @@ end
 -- InputMan object
 
 function InputMan:initialize(mapping)
-    self.thread = love.thread.newThread(path..'/thread.lua')
+    self.thread = love.thread.newThread('libs/inputman/thread.lua')
     self.eChannel = love.thread.getChannel('input_events')
     self.cChannel = love.thread.getChannel('input_commands')
     self.pChannel = love.thread.getChannel('input_pollstate')
