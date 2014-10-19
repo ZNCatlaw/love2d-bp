@@ -2,6 +2,8 @@
 require('love.timer')
 require('love.joystick')
 require('love.keyboard')
+require('love.filesystem')
+
 local JSON = require('vendor/dkjson')
 local Set = require('vendor/nomoon/set')
 
