@@ -1,9 +1,10 @@
 -- $Id: re.lua,v 1.44 2013/03/26 20:11:40 roberto Exp $
+-- 2014/08/15 changes rostislav
 
 -- imported functions and modules
-local tonumber, type, print, error = tonumber, type, print, error
+local tonumber, print, error = tonumber, print, error
 local setmetatable = setmetatable
-local m = require"vendor/lpeglj/lpeglj"
+local m = require"lpeglj"
 
 -- 'm' will be used to parse expressions, and 'mm' will be used to
 -- create expressions; that is, 're' runs on 'm', creating patterns
@@ -12,7 +13,7 @@ local mm = m
 
 -- pattern's metatable
 local mt = getmetatable(mm.P(0))
-mt = m.version() == "0.12.2LJ" and m or mt
+mt = m.version() == "1.0.0.0LJ" and m or mt
 
 
 
@@ -99,7 +100,11 @@ end
 local function equalcap (s, i, c)
   if type(c) ~= "string" then return nil end
   local e = #c + i
-  if s:sub(i, e - 1) == c then return e else return nil end
+  if type(s) == 'function' then  -- stream mode
+      if s(i, e - 1) == c then return e else return nil end
+  else
+      if s:sub(i, e - 1) == c then return e else return nil end
+  end
 end
 
 
@@ -229,6 +234,16 @@ local function streammatch (p, i)
     return cp:streammatch(i or 1)
 end
 
+-- Only for testing purpose
+local function emulatestreammatch(s, p, i)
+    local cp = mem[p]
+    if not cp then
+        cp = compile(p)
+        mem[p] = cp
+    end
+    return cp:emulatestreammatch(s, i or 1)
+end
+
 local function find (s, p, i)
   local cp = fmem[p]
   if not cp then
@@ -260,6 +275,7 @@ local re = {
   compile = compile,
   match = match,
   streammatch = streammatch,
+  emulatestreammatch = emulatestreammatch,
   find = find,
   gsub = gsub,
   updatelocale = updatelocale,

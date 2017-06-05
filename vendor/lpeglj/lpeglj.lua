@@ -2,8 +2,8 @@
 LPEGLJ
 lpeglj.lua
 Main module and tree generation
-Copyright (C) 2013 Rostislav Sacek.
-based on LPeg v0.12 - PEG pattern matching for Lua
+Copyright (C) 2014 Rostislav Sacek.
+based on LPeg v1.0 - PEG pattern matching for Lua
 Lua.org & PUC-Rio  written by Roberto Ierusalimschy
 http://www.inf.puc-rio.br/~roberto/lpeg/
 
@@ -29,18 +29,16 @@ http://www.inf.puc-rio.br/~roberto/lpeg/
 ** [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --]]
 
+assert(jit.version_num > 20000, "Use LuaJIT v2.0.1 or higher.")
 
-local ffi = require"ffi"
-local lpcode = require"vendor/lpeglj/lpcode"
-local lpprint = require"vendor/lpeglj/lpprint"
-local lpvm = require"vendor/lpeglj/lpvm"
+local ffi = require "ffi"
+local lpcode = require "lpcode"
+local lpprint = require "lpprint"
+local lpvm = require "lpvm"
 
 local band, bor, bnot, rshift, lshift = bit.band, bit.bor, bit.bnot, bit.rshift, bit.lshift
 
-ffi.cdef[[
- void *malloc( size_t size );
- void free( void *memblock );
- void *realloc( void *memblock, size_t size );
+ffi.cdef [[
  int isalnum(int c);
  int isalpha(int c);
  int iscntrl(int c);
@@ -54,24 +52,9 @@ ffi.cdef[[
  int isxdigit(int c);
 ]]
 
-ffi.cdef[[
-  typedef struct {
-                  int tag;
-                  int val;
-                  int ps;
-                  int cap;
-                 } TREEPATTERN_ELEMENT;
-  typedef struct {
-                  int id;
-                  int treesize;
-                  PATTERN *code;
-                  TREEPATTERN_ELEMENT p[?];
-                 } TREEPATTERN;
-]]
-
 local MAXBEHIND = 255
 local MAXRULES = 200
-local VERSION = "0.12.2LJ"
+local VERSION = "1.0.0.0LJ"
 
 local TChar = 0
 local TSet = 1
@@ -140,6 +123,7 @@ local newgrammar
 
 local RuleLR = 0x10000
 local Ruleused = 0x20000
+local BCapcandelete = 0x30000
 
 local LREnable = false
 
@@ -176,7 +160,8 @@ local uint32 = ffi.typeof('uint32_t[1]')
 local function fixonecall(postable, grammar, index, valuetable)
     local name = valuetable[grammar.p[index].val] -- get rule's name
     local n = postable[name] -- query name in position table
-    if not n then -- no position?
+    -- no position?
+    if not n then
         error(("rule '%s' undefined in given grammar"):format(type(name) == 'table' and '(a table)' or name), 0)
     end
     grammar.p[index].tag = TCall;
@@ -216,12 +201,15 @@ end
 local function finalfix(fix, postable, grammar, index, valuetable)
 
     local tag = grammar.p[index].tag
-    if tag == TGrammar then --subgrammars were already fixed
+    --subgrammars were already fixed
+    if tag == TGrammar then
         return
     elseif tag == TOpenCall then
-        if fix then -- inside a grammar?
+        -- inside a grammar?
+        if fix then
             fixonecall(postable, grammar, index, valuetable)
-        else -- open call outside grammar
+            -- open call outside grammar
+        else
             error(("rule '%s' used outside a grammar"):format(tostring(valuetable[grammar.p[index].val])), 0)
         end
     elseif tag == TSeq or tag == TChoice then
@@ -268,7 +256,8 @@ end
 -- must build a sequence of sequence of sequence...)
 
 local function fillseq(tree, tag, start, n, s)
-    for i = 1, n - 1 do -- initial n-1 copies of Seq tag; Seq ...
+    -- initial n-1 copies of Seq tag; Seq ...
+    for i = 1, n - 1 do
         tree.p[start].tag = TSeq
         tree.p[start].ps = 2
         tree.p[start + 1].tag = tag
@@ -298,7 +287,8 @@ local function numtree(n)
         if n > 0 then
             tree = treepattern(2 * n - 1)
             start = 0
-        else -- negative: code it as !(-n)
+            -- negative: code it as !(-n)
+        else
             n = -n;
             tree = treepattern(2 * n)
             tree.p[0].tag = TNot
@@ -315,7 +305,8 @@ end
 local function getpatt(val, name)
     local typ = type(val)
     if typ == 'string' then
-        if #val == 0 then -- empty?
+        -- empty?
+        if #val == 0 then
             local pat = treepattern(1)
             pat.p[0].tag = TTrue -- always match
             return pat
@@ -367,6 +358,7 @@ local function copykeys(ktable1, ktable2)
             ktable[#ktable + 1] = ktable2[i]
         end
     end
+    assert(#ktable < 65536, "too many Lua values in pattern")
     return ktable, offset
 end
 
@@ -434,9 +426,11 @@ end
 local function lp_seq(pat1, pat2)
     local tree1 = getpatt(pat1)
     local tree2 = getpatt(pat2)
-    if tree1.p[0].tag == TFalse or tree2.p[0].tag == TTrue then --  false . x == false, x . true = x
+    --  false . x == false, x . true = x
+    if tree1.p[0].tag == TFalse or tree2.p[0].tag == TTrue then
         return tree1
-    elseif tree1.p[0].tag == TTrue then -- true . x = x
+        -- true . x = x
+    elseif tree1.p[0].tag == TTrue then
         return tree2
     else
         return newroot2sib(TSeq, tree1, tree2)
@@ -476,26 +470,30 @@ local function lp_star(tree1, n)
     local tree
     n = tonumber(n)
     assert(type(n) == 'number')
-    if n >= 0 then -- seq tree1 (seq tree1 ... (seq tree1 (rep tree1)))
+    -- seq tree1 (seq tree1 ... (seq tree1 (rep tree1)))
+    if n >= 0 then
         tree = treepattern((n + 1) * (tree1.treesize + 1))
         if lpcode.checkaux(tree1, PEnullable, 0) then
             error("loop body may accept empty string", 0)
         end
         valuetable[tree.id] = copykeys(valuetable[tree1.id])
         local start = 0
-        for i = 1, n do -- repeat 'n' times
+        -- repeat 'n' times
+        for i = 1, n do
             seqaux(tree, tree1, start, tree1.treesize)
             start = start + tree.p[start].ps
         end
         tree.p[start].tag = TRep
         ffi.copy(tree.p + start + 1, tree1.p, ffi.sizeof(treepatternelement) * tree1.treesize)
-    else -- choice (seq tree1 ... choice tree1 true ...) true
+        -- choice (seq tree1 ... choice tree1 true ...) true
+    else
         n = -n;
         -- size = (choice + seq + tree1 + true) * n, but the last has no seq
         tree = treepattern(n * (tree1.treesize + 3) - 1)
         valuetable[tree.id] = copykeys(valuetable[tree1.id])
         local start = 0
-        for i = n, 2, -1 do -- repeat (n - 1) times
+        -- repeat (n - 1) times
+        for i = n, 2, -1 do
             tree.p[start].tag = TChoice;
             tree.p[start].ps = i * (tree1.treesize + 3) - 2
             tree.p[start + tree.p[start].ps].tag = TTrue;
@@ -588,7 +586,7 @@ local function lp_behind(pat)
     local tree1 = getpatt(pat)
     local n = lpcode.fixedlenx(tree1, 0, 0, 0)
     assert(not lpcode.hascaptures(tree1, 0), "pattern have captures")
-    assert(n > 0, "pattern may not have fixed length")
+    assert(n >= 0, "pattern may not have fixed length")
     assert(n <= MAXBEHIND, "pattern too long to look behind")
     local tree = newroot1sib(TBehind, pat)
     tree.p[0].val = n;
@@ -617,6 +615,7 @@ local function capture_aux(cap, pat, val)
     tree.p[0].cap = cap
     if val then
         local ind = #valuetable[tree.id] + 1
+        assert(ind <= 65536, "too many Lua values in pattern" .. ind)
         valuetable[tree.id][ind] = val
         tree.p[0].val = ind
     end
@@ -629,8 +628,9 @@ end
 local function auxemptycap(tree, cap, par, start)
     tree.p[start].tag = TCapture;
     tree.p[start].cap = cap
-    if par then
+    if type(par) ~= 'nil' then
         local ind = #valuetable[tree.id] + 1
+        assert(ind <= 65536, "too many Lua values in pattern")
         valuetable[tree.id][ind] = par
         tree.p[start].val = ind
     end
@@ -642,7 +642,7 @@ end
 
 local function newemptycap(cap, par)
     local tree = treepattern(2)
-    if par then valuetable[tree.id] = {} end
+    if type(par) ~= 'nil' then valuetable[tree.id] = {} end
     auxemptycap(tree, cap, par, 0)
     return tree
 end
@@ -651,7 +651,7 @@ end
 -- Captures with syntax p / v
 -- (function capture, query capture, string capture, or number capture)
 
-local function lp_divcapture(pat, par)
+local function lp_divcapture(pat, par, xxx)
     local typ = type(par)
     if typ == "function" then
         return capture_aux(Cfunction, pat, par)
@@ -664,6 +664,7 @@ local function lp_divcapture(pat, par)
         assert(0 <= par and par <= 0xffff, "invalid number")
         tree.p[0].cap = Cnum;
         local ind = #valuetable[tree.id] + 1
+        assert(ind <= 65536, "too many Lua values in pattern")
         valuetable[tree.id][ind] = par
         tree.p[0].val = ind
         return tree
@@ -674,7 +675,7 @@ end
 
 
 local function lp_substcapture(pat)
-    return capture_aux(Csubst, pat, 0)
+    return capture_aux(Csubst, pat)
 end
 
 
@@ -685,7 +686,7 @@ end
 
 local function lp_groupcapture(pat, val)
     if not val then
-        return capture_aux(Cgroup, pat, 0)
+        return capture_aux(Cgroup, pat)
     else
         return capture_aux(Cgroup, pat, val)
     end
@@ -699,12 +700,12 @@ end
 
 
 local function lp_simplecapture(pat)
-    return capture_aux(Csimple, pat, 0)
+    return capture_aux(Csimple, pat)
 end
 
 
 local function lp_poscapture()
-    return newemptycap(Cposition, 0)
+    return newemptycap(Cposition)
 end
 
 
@@ -712,6 +713,7 @@ local function lp_argcapture(val)
     assert(type(val) == 'number')
     local tree = newemptycap(Carg, 0)
     local ind = #valuetable[tree.id] + 1
+    assert(ind <= 65536, "too many Lua values in pattern")
     valuetable[tree.id][ind] = val
     tree.p[0].val = ind
     assert(0 < val and val <= 0xffff, "invalid argument index")
@@ -720,7 +722,6 @@ end
 
 
 local function lp_backref(val)
-    assert(type(val) == 'string')
     return newemptycap(Cbackref, val)
 end
 
@@ -731,17 +732,18 @@ local function lp_constcapture(...)
     local tree
     local args = { ... }
     local n = select('#', ...) -- number of values
-    if n == 0 then -- no values?
+    -- no values?
+    if n == 0 then
         tree = treepattern(1) -- no capture
         tree.p[0].tag = TTrue
     elseif n == 1 then
         tree = newemptycap(Cconst, args[1]) -- single constant capture
-    else -- create a group capture with all values
+        -- create a group capture with all values
+    else
         tree = treepattern(3 + 3 * (n - 1))
-        valuetable[tree.id] = { 0 }
+        valuetable[tree.id] = {}
         tree.p[0].tag = TCapture
         tree.p[0].cap = Cgroup
-        tree.p[0].val = 1
         local start = 1
         for i = 1, n - 1 do
             tree.p[start].tag = TSeq
@@ -762,6 +764,7 @@ local function lp_matchtime(pat, fce, name)
     end
     local tree = newroot1sib(TRunTime, pat)
     local ind = #valuetable[tree.id] + 1
+    assert(ind <= 65536, "too many Lua values in pattern")
     valuetable[tree.id][ind] = fce
     tree.p[0].val = ind
     return tree
@@ -782,7 +785,8 @@ end
 
 local function getfirstrule(pat, postab)
     local key
-    if type(pat[1]) == 'string' then -- access first element
+    -- access first element
+    if type(pat[1]) == 'string' then
         key = pat[1]
     else
         key = 1
@@ -791,7 +795,8 @@ local function getfirstrule(pat, postab)
     if not rule then
         error("grammar has no initial rule", 0)
     end
-    if not ffi.istype(treepattern, rule) then -- initial rule not a pattern?
+    -- initial rule not a pattern?
+    if not ffi.istype(treepattern, rule) then
         error(("initial rule '%s' is not a pattern"):format(tostring(key)), 0)
     end
     postab[key] = 1
@@ -813,8 +818,10 @@ local function collectrules(pat)
     local rules = { firstkeyrule, firstrule }
     local size = 2 + firstrule.treesize -- TGrammar + TRule + rule
     for key, val in pairs(pat) do
-        if key ~= 1 and tostring(val) ~= tostring(firstrule) then -- initial rule?
-            if not ffi.istype(treepattern, val) then -- value is not a pattern?
+        -- initial rule?
+        if key ~= 1 and tostring(val) ~= tostring(firstrule) then
+            -- value is not a pattern?
+            if not ffi.istype(treepattern, val) then
                 error(("rule '%s' is not a pattern"):format(tostring(key)), 0)
             end
             rules[#rules + 1] = key
@@ -831,7 +838,8 @@ end
 
 local function buildgrammar(grammar, rules, n, index, valuetable)
     local ktable, offset = {}, 0
-    for i = 1, n do -- add each rule into new tree
+    -- add each rule into new tree
+    for i = 1, n do
         local size = rules[i * 2].treesize
         grammar.p[index].tag = TRule;
         grammar.p[index].cap = i; -- rule number
@@ -897,7 +905,8 @@ local function verifyrule(rulename, tree, passed, nullable, index, valuetable)
             return nullable
         end
         return verifyrule(rulename, tree, passed, nullable, index + tree.p[index].ps, valuetable)
-    elseif tag == TSeq then -- only check 2nd child if first is nullable
+        -- only check 2nd child if first is nullable
+    elseif tag == TSeq then
         local res = verifyrule(rulename, tree, passed, false, index + 1, valuetable)
         if res == PEleftrecursion then
             return res
@@ -906,7 +915,8 @@ local function verifyrule(rulename, tree, passed, nullable, index, valuetable)
         else
             return verifyrule(rulename, tree, passed, nullable, index + tree.p[index].ps, valuetable)
         end
-    elseif tag == TChoice then -- must check both children
+        -- must check both children
+    elseif tag == TChoice then
         nullable = verifyrule(rulename, tree, passed, nullable, index + 1, valuetable)
         if nullable == PEleftrecursion then return nullable end
         return verifyrule(rulename, tree, passed, nullable, index + tree.p[index].ps, valuetable)
@@ -928,7 +938,8 @@ local function verifygrammar(rule, index, valuetable)
     local ind = index + 1
     while rule.p[ind].tag == TRule do
         local rulename = valuetable[rule.p[ind].val]
-        if rulename then -- used rule
+        -- used rule
+        if rulename then
             if verifyrule(rulename, rule, {}, false, ind + 1, valuetable) == PEleftrecursion then
                 if not LREnable then
                     error(("rule '%s' may be left recursive"):format(rulename), 0)
@@ -954,7 +965,8 @@ local function verifygrammar(rule, index, valuetable)
     -- check infinite loops inside rules
     ind = index + 1
     while rule.p[ind].tag == TRule do
-        if rule.p[ind].val then -- used rule
+        -- used rule
+        if rule.p[ind].val then
             if checkloops(rule, ind + 1) then
                 error(("empty loop in rule '%s'"):format(tostring(valuetable[rule.p[ind].val])), 0)
             end
@@ -969,8 +981,10 @@ end
 
 local function initialrulename(grammar, val, valuetable)
     grammar.p[1].cap = bit.bor(grammar.p[1].cap, Ruleused)
-    if grammar.p[1].val == 0 then -- initial rule is not referenced?
+    -- initial rule is not referenced?
+    if grammar.p[1].val == 0 then
         local ind = #valuetable + 1
+        assert(ind <= 65536, "too many Lua values in pattern")
         valuetable[ind] = val
         grammar.p[1].val = ind
     end
@@ -1054,8 +1068,54 @@ local function reducevaluetable(p)
 end
 
 
+local function checkalt(tree)
+    local notchecked = {}
+    local notinalternativerules = {}
+
+    local function iter(tree, index, choice, rule)
+        local tag = tree[index].tag
+        if tag == TCapture and bit.band(tree[index].cap, 0xffff) == Cgroup then
+            if not choice then
+                if rule then
+                    notchecked[rule] = index
+                end
+            else
+                tree[index].cap = bit.bor(tree[index].cap, BCapcandelete)
+            end
+        elseif tag == TChoice then
+            choice = true
+        elseif tag == TRule then
+            rule = tree[index].val
+            if bit.band(tree[index].cap, 0xffff) - 1 == 0 then
+                notinalternativerules[rule] = notinalternativerules[rule] or true
+            end
+        elseif tag == TCall then
+            local r = tree[index].val
+            if not choice then
+                notinalternativerules[r] = notinalternativerules[r] or true
+            end
+        end
+        local sibs = numsiblings[tree[index].tag + 1] or 0
+        if sibs >= 1 then
+            iter(tree, index + 1, choice, rule)
+            if sibs >= 2 then
+                return iter(tree, index + tree[index].ps, choice, rule)
+            end
+        end
+    end
+
+    iter(tree, 0)
+    for k, v in pairs(notchecked) do
+        if not notinalternativerules[k] then
+            tree[v].cap = bit.bor(tree[v].cap, BCapcandelete)
+        end
+    end
+end
+
+
 local function prepcompile(p, index)
     finalfix(false, nil, p, index, valuetable[p.id])
+    checkalt(p.p)
     lpcode.compile(p, index, valuetable[p.id])
     reducevaluetable(p)
     return p.code
@@ -1072,31 +1132,11 @@ end
 
 
 local function lp_printcode(pat)
-    if pat.code == nil then -- not compiled yet?
+    -- not compiled yet?
+    if pat.code == nil then
         prepcompile(pat, 0)
     end
     lpprint.printpatt(pat.code, valuetable[pat.id])
-end
-
-
--- Get the initial position for the match, interpreting negative
--- values from the end of the subject
-
-local function initposition(len, pos)
-    local ii = pos or 1
-    if (ii > 0) then -- positive index?
-        if ii <= len then -- inside the string?
-            return ii - 1; -- return it (corrected to 0-base)
-        else
-            return len; -- crop at the end
-        end
-    else -- negative index
-        if -ii <= len then -- inside the string?
-            return len + ii -- return position from the end
-        else
-            return 0; -- crop at the beginning
-        end
-    end
 end
 
 
@@ -1104,46 +1144,22 @@ end
 
 local function lp_match(pat, s, init, ...)
     local p = ffi.istype(treepattern, pat) and pat or getpatt(pat)
-    local code = p.code ~= nil and p.code or prepcompile(p, 0)
-    local i = initposition(s:len(), init) + 1
-    return select(2, lpvm.match(false, true, s, i, code, valuetable[p.id], ...))
+    p.code = p.code ~= nil and p.code or prepcompile(p, 0)
+    return lpvm.match(p, s, init, valuetable[p.id], ...)
 end
-
 
 local function lp_streammatch(pat, init, ...)
     local p = ffi.istype(treepattern, pat) and pat or getpatt(pat)
-    local code = p.code ~= nil and p.code or prepcompile(p, 0)
-    local params = { ... }
-    local paramslength = select('#', ...)
-    local fce = coroutine.wrap(function(s, last)
-        return lpvm.match(true, last, s, init or 1, code, valuetable[p.id], unpack(params, 1, paramslength))
-    end)
-    return fce
+    p.code = p.code ~= nil and p.code or prepcompile(p, 0)
+    return lpvm.streammatch(p, init, valuetable[p.id], ...)
 end
 
-local function retcount(...)
-    return select('#', ...), { ... }
-end
-
-local function lp_emulatestreammatch(pat, s, init, ...)   -- stream emulation (send first char and then rest of string)
-    local i = initposition(s:len(), init) + 1
-    local fce = lp_streammatch(pat, i, ...)
-    if #s > 1 then
-        local count1, ret1 = retcount(fce(s:sub(1, 1))) -- first char
-        if ret1[1] == -1 then
-            return -- fail
-        elseif ret1[1] == 0 then  -- no another data needed
-            return unpack(ret1, 2, count1)
-        else
-            local count2, ret2 = retcount(fce(s:sub(2, -1), true)) -- rest and ends
-            for i = 2, count2 do
-              ret1[count1 + i - 1] = ret2[i]
-            end
-            return unpack(ret1, 2, count1 + count2 - 1)
-        end
-    end
-
-    return select(2, fce(s, true))
+-- Only for testing purpose
+-- stream emulation (send all chars from string one char after char)
+local function lp_emulatestreammatch(pat, s, init, ...)
+    local p = ffi.istype(treepattern, pat) and pat or getpatt(pat)
+    p.code = p.code ~= nil and p.code or prepcompile(p, 0)
+    return lpvm.emulatestreammatch(p, s, init, valuetable[p.id], ...)
 end
 
 -- {======================================================
@@ -1154,10 +1170,13 @@ local function lp_setmax(val)
     lpvm.setmax(val)
 end
 
+local function lp_setmaxbehind(val)
+    lpvm.setmaxbehind(val)
+end
+
 local function lp_enableleftrecursion(val)
     LREnable = val
 end
-
 
 local function lp_version()
     return VERSION
@@ -1211,6 +1230,7 @@ end
 local function lp_gc(ct)
     valuetable[ct.id] = nil
     if ct.code ~= nil then
+        ffi.C.free(ct.code.p)
         ffi.C.free(ct.code)
     end
 end
@@ -1219,101 +1239,74 @@ local function lp_eq(ct1, ct2)
     return tostring(ct1) == tostring(ct2)
 end
 
-
-local function lp_load(fname, fcetab)
-    local file = assert(io.open(fname, 'rb'))
-    local patsize = ffi.cast('uint32_t*', file:read(4))[0]
-    local data = file:read(ffi.sizeof(treepatternelement) * patsize)
-    local pat = treepattern(patsize)
-    ffi.copy(pat.p, data, ffi.sizeof(treepatternelement) * patsize)
-    pat.code = pattern()
-    pat.code.size = ffi.cast('uint32_t*', file:read(4))[0]
-    local data = file:read(pat.code.size * ffi.sizeof(patternelement))
-    local count = ffi.cast('uint32_t*', file:read(4))[0]
-    local t = {}
-    for i = 1, count do
-        local tag = file:read(3)
-        if tag == 'str' then --string
-            local len = ffi.cast('uint32_t*', file:read(4))[0]
-            local val = file:read(len)
-            t[#t + 1] = val
-        elseif tag == 'num' then --number
-            local len = ffi.cast('uint32_t*', file:read(4))[0]
-            local val = file:read(len)
-            t[#t + 1] = tonumber(val)
-        elseif tag == 'cdt' then --ctype
-            local data = file:read(ffi.sizeof(settype))
-            local val = settype()
-            ffi.copy(val, data, ffi.sizeof(val))
-            t[#t + 1] = val
-        elseif tag == 'fnc' then --function
-            local len = ffi.cast('uint32_t*', file:read(4))[0]
-            local fname = file:read(len)
-            len = ffi.cast('uint32_t*', file:read(4))[0]
-            local val = file:read(len)
-            if fcetab and fcetab[fname] then
-                assert(type(fcetab[fname]) == 'function', ('"%s" is not function'):format(fname))
-                t[#t + 1] = fcetab[fname]
-            else
-                t[#t + 1] = loadstring(val)
-            end
-        end
-    end
-    file:close()
+local function lp_load(str, fcetab)
+    local pat, t = lpvm.load(str, fcetab, true)
     valuetable[pat.id] = t
-    pat.code.allocsize = pat.code.size
-    pat.code.p = ffi.C.realloc(pat.code.p, ffi.sizeof(patternelement) * pat.code.allocsize)
-    assert(pat.code.p ~= nil)
-    ffi.copy(pat.code.p, data, ffi.sizeof(patternelement) * pat.code.allocsize)
     return pat
 end
 
-local function lp_save(ct, fname, tree)
+local function lp_loadfile(fname, fcetab)
+    local pat, t = lpvm.loadfile(fname, fcetab, true)
+    valuetable[pat.id] = t
+    return pat
+end
+
+local function lp_dump(ct, tree)
     local funccount = 0
-    if ct.code == nil then -- not compiled yet?
+    -- not compiled yet?
+    if ct.code == nil then
         prepcompile(ct, 0)
     end
-    local file = assert(io.open(fname, 'wb'))
+    local out = {}
     if tree then
-        file:write(ffi.string(uint32(ct.treesize), 4))
-        file:write(ffi.string(ct.p, ffi.sizeof(treepatternelement) * ct.treesize))
+        out[#out + 1] = ffi.string(uint32(ct.treesize), 4)
+        out[#out + 1] = ffi.string(ct.p, ffi.sizeof(treepatternelement) * ct.treesize)
     else
-        file:write(ffi.string(uint32(0), 4))
+        out[#out + 1] = ffi.string(uint32(0), 4)
     end
-    file:write(ffi.string(uint32(ct.code.size), 4))
-    file:write(ffi.string(ct.code.p, ct.code.size * ffi.sizeof(patternelement)))
+    out[#out + 1] = ffi.string(uint32(ct.code.size), 4)
+    out[#out + 1] = ffi.string(ct.code.p, ct.code.size * ffi.sizeof(patternelement))
     local t = valuetable[ct.id]
     local len = t and #t or 0
-    file:write(ffi.string(uint32(len), 4))
+    out[#out + 1] = ffi.string(uint32(len), 4)
     if len > 0 then
         for _, val in ipairs(t) do
             local typ = type(val)
             if typ == 'string' then
-                file:write('str')
-                file:write(ffi.string(uint32(#val), 4))
-                file:write(val)
+                out[#out + 1] = 'str'
+                out[#out + 1] = ffi.string(uint32(#val), 4)
+                out[#out + 1] = val
             elseif typ == 'number' then
                 local val = tostring(val)
-                file:write('num')
-                file:write(ffi.string(uint32(#val), 4))
-                file:write(val)
+                out[#out + 1] = 'num'
+                out[#out + 1] = ffi.string(uint32(#val), 4)
+                out[#out + 1] = val
             elseif typ == 'cdata' then
-                file:write('cdt')
-                file:write(ffi.string(val, ffi.sizeof(val)))
+                out[#out + 1] = 'cdt'
+                out[#out + 1] = ffi.string(val, ffi.sizeof(val))
             elseif typ == 'function' then
-                file:write('fnc')
-                local name = funcnames[val] or ('FNAME%03d'):format(funccount)
+                out[#out + 1] = 'fnc'
                 funccount = funccount + 1
-                file:write(ffi.string(uint32(#name), 4))
-                file:write(name)
+                local name = funcnames[val] or ('FNAME%03d'):format(funccount)
+                out[#out + 1] = ffi.string(uint32(#name), 4)
+                out[#out + 1] = name
+                if not funcnames[val] and debug.getupvalue(val, 1) then
+                    io.write(("Patterns function (%d) contains upvalue (%s) - use symbol name for function (%s).\n"):format(funccount, debug.getupvalue(val, 1), name), 0)
+                end
                 local data = string.dump(val, true)
-                file:write(ffi.string(uint32(#data), 4))
-                file:write(data)
+                out[#out + 1] = ffi.string(uint32(#data), 4)
+                out[#out + 1] = data
             else
-                error(("Type '%s' NYI for saving"):format(typ), 0)
+                error(("Type '%s' NYI for dump"):format(typ), 0)
             end
         end
     end
+    return table.concat(out)
+end
+
+local function lp_save(ct, fname, tree)
+    local file = assert(io.open(fname, 'wb'))
+    file:write(lp_dump(ct, tree))
     file:close()
 end
 
@@ -1324,6 +1317,7 @@ local pattreg = {
     ["match"] = lp_match,
     ["streammatch"] = lp_streammatch,
     ["emulatestreammatch"] = lp_emulatestreammatch,
+    ["setmaxbehind"] = lp_setmaxbehind,
     ["B"] = lp_behind,
     ["V"] = lp_V,
     ["C"] = lp_simplecapture,
@@ -1346,8 +1340,11 @@ local pattreg = {
     ["type"] = lp_type,
     ["enableleftrecursion"] = lp_enableleftrecursion,
     ["enablememoization"] = lpvm.enablememoization,
+    ["enabletracing"] = lpvm.enabletracing,
     ["save"] = lp_save,
+    ["dump"] = lp_dump,
     ["load"] = lp_load,
+    ["loadfile"] = lp_loadfile,
     ["__mul"] = lp_seq,
     ["__add"] = lp_choice,
     ["__pow"] = lp_star,

@@ -1,7 +1,5 @@
-local path = debug.getinfo(1).short_src:match("(.-)[^\\/]-%.?[^%.\\/]*$")
-
 -- Optional parser that creates a flat DOM from parsing
-local SLAXML = require(path..'slaxml')
+local SLAXML = require 'slaxml'
 function SLAXML:dom(xml,opts)
 	if not opts then opts={} end
 	local rich = not opts.simple

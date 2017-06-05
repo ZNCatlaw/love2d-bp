@@ -1,3 +1,8 @@
+-- Module options:
+local always_try_using_lpeg = true
+local register_global_module_table = false
+local global_module_name = 'json'
+
 --[==[
 
 David Kolf's JSON module for Lua 5.1/5.2
@@ -35,7 +40,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --]==]
-local always_try_using_lpeg = true
 
 -- global dependencies:
 local pairs, type, tostring, tonumber, getmetatable, setmetatable, rawset =
@@ -594,7 +598,7 @@ function json.decode (str, pos, nullval, ...)
 end
 
 function json.use_lpeg ()
-  local g = require ("vendor/lpeglj/lpeglj")
+  local g = require ("lpeg")
 
   if g.version() == "0.11" then
     error "due to a bug in LPeg 0.11, it cannot be used for JSON matching"

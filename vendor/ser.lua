@@ -1,15 +1,4 @@
---[[
-		Copyright (c) 2011,2013 Robin Wellner
-
-		Permission is hereby granted, free of charge, to any person obtaining a copy
-		of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-		The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-		THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-]]
-
-local pairs, ipairs, tostring, type, concat, dump, floor = pairs, ipairs, tostring, type, table.concat, string.dump, math.floor
+local pairs, ipairs, tostring, type, concat, dump, floor, format = pairs, ipairs, tostring, type, table.concat, string.dump, math.floor, string.format
 
 local function getchr(c)
 	return "\\" .. c:byte()
@@ -19,12 +8,14 @@ local function make_safe(text)
 	return ("%q"):format(text):gsub('\n', 'n'):gsub("[\128-\255]", getchr)
 end
 
-local oddvals = {[tostring(1/0)] = '1/0', [tostring(-1/0)] = '-1/0', [tostring(0/0)] = '0/0'}
+local oddvals = {[tostring(1/0)] = '1/0', [tostring(-1/0)] = '-1/0', [tostring(-(0/0))] = '-(0/0)', [tostring(0/0)] = '0/0'}
 local function write(t, memo, rev_memo)
 	local ty = type(t)
-	if ty == 'number' or ty == 'boolean' or ty == 'nil' then
-		t = tostring(t)
+	if ty == 'number' then
+		t = format("%.17g", t)
 		return oddvals[t] or t
+	elseif ty == 'boolean' or ty == 'nil' then
+		return tostring(t)
 	elseif ty == 'string' then
 		return make_safe(t)
 	elseif ty == 'table' or ty == 'function' then
@@ -33,7 +24,7 @@ local function write(t, memo, rev_memo)
 			memo[t] = index
 			rev_memo[index] = t
 		end
-		return '_' .. memo[t]
+		return '_[' .. memo[t] .. ']'
 	else
 		error("Trying to serialize unsupported type " .. ty)
 	end
@@ -47,9 +38,9 @@ local kw = {['and'] = true, ['break'] = true, ['do'] = true, ['else'] = true,
 	['until'] = true, ['while'] = true}
 local function write_key_value_pair(k, v, memo, rev_memo, name)
 	if type(k) == 'string' and k:match '^[_%a][_%w]*$' and not kw[k] then
-		return (name and name .. '.' or '') .. k ..' = ' .. write(v, memo, rev_memo)
+		return (name and name .. '.' or '') .. k ..'=' .. write(v, memo, rev_memo)
 	else
-		return (name or '') .. '[' .. write(k, memo, rev_memo) .. '] = ' .. write(v, memo, rev_memo)
+		return (name or '') .. '[' .. write(k, memo, rev_memo) .. ']=' .. write(v, memo, rev_memo)
 	end
 end
 
@@ -64,20 +55,19 @@ end
 
 local function write_table_ex(t, memo, rev_memo, srefs, name)
 	if type(t) == 'function' then
-		return 'local _' .. name .. ' = loadstring ' .. make_safe(dump(t))
+		return '_[' .. name .. ']=loadstring' .. make_safe(dump(t))
 	end
-	local m = {'local _', name, ' = {'}
-	local mi = 3
+	local m = {}
+	local mi = 1
 	for i = 1, #t do -- don't use ipairs here, we need the gaps
 		local v = t[i]
 		if v == t or is_cyclic(memo, v, t) then
 			srefs[#srefs + 1] = {name, i, v}
-			m[mi + 1] = 'nil, '
+			m[mi] = 'nil'
 			mi = mi + 1
 		else
-			m[mi + 1] = write(v, memo, rev_memo)
-			m[mi + 2] = ', '
-			mi = mi + 2
+			m[mi] = write(v, memo, rev_memo)
+			mi = mi + 1
 		end
 	end
 	for k,v in pairs(t) do
@@ -85,14 +75,12 @@ local function write_table_ex(t, memo, rev_memo, srefs, name)
 			if v == t or k == t or is_cyclic(memo, v, t) or is_cyclic(memo, k, t) then
 				srefs[#srefs + 1] = {name, k, v}
 			else
-				m[mi + 1] = write_key_value_pair(k, v, memo, rev_memo)
-				m[mi + 2] = ', '
-				mi = mi + 2
+				m[mi] = write_key_value_pair(k, v, memo, rev_memo)
+				mi = mi + 1
 			end
 		end
 	end
-	m[mi > 3 and mi or mi + 1] = '}'
-	return concat(m)
+	return '_[' .. name .. ']={' .. concat(m, ',') .. '}'
 end
 
 return function(t)
@@ -117,16 +105,17 @@ return function(t)
 	-- phase 3: add all the tricky cyclic stuff
 	for i, v in ipairs(srefs) do
 		n = n + 1
-		result[n] = write_key_value_pair(v[2], v[3], memo, rev_memo, '_' .. v[1])
+		result[n] = write_key_value_pair(v[2], v[3], memo, rev_memo, '_[' .. v[1] .. ']')
 	end
 
 	-- phase 4: add something about returning the main table
-	if result[n]:sub(1, 8) == 'local _0' then
-		result[n] = 'return' .. result[n]:sub(11)
+	if result[n]:sub(1, 5) == '_[0]=' then
+		result[n] = 'return ' .. result[n]:sub(6)
 	else
-		result[n + 1] = 'return _0'
+		result[n + 1] = 'return _[0]'
 	end
 
 	-- phase 5: just concatenate everything
-	return concat(result, '\n')
+	result = concat(result, '\n')
+	return n > 1 and 'local _={}\n' .. result or result
 end

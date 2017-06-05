@@ -3,7 +3,7 @@ LPEGLJ
 lpprint.lua
 Tree, code and debug print function (only for debuging)
 Copyright (C) 2014 Rostislav Sacek.
-based on LPeg v0.12 - PEG pattern matching for Lua
+based on LPeg v1.0 - PEG pattern matching for Lua
 Lua.org & PUC-Rio  written by Roberto Ierusalimschy
 http://www.inf.puc-rio.br/~roberto/lpeg/
 
@@ -187,15 +187,24 @@ local function printjmp(p, index)
     io.write(("-> %d"):format(index + p[index].offset))
 end
 
+local function printrulename(p, index, rulenames)
+    if rulenames and rulenames[index + p[index].offset] then
+        io.write(' ', rulenames[index + p[index].offset])
+    end
+end
 
-local function printinst(p, index, valuetable)
+local function printinst(p, index, valuetable, rulenames)
     local code = p[index].code
-    io.write(("%02d: %s "):format(index, names[code]))
+    if rulenames and rulenames[index] then
+        io.write(rulenames[index], '\n')
+    end
+    io.write(("%04d: %s "):format(index, names[code]))
     if code == IChar then
         io.write(("'%s'"):format(string.char(p[index].val)))
     elseif code == ITestChar then
         io.write(("'%s'"):format(string.char(p[index].val)))
         printjmp(p, index)
+        printrulename(p, index, rulenames)
     elseif code == IFullCapture then
         printcapkind(band(p[index].val, 0x0f));
         io.write((" (size = %d)  (idx = %s)"):format(band(rshift(p[index].val, 4), 0xF), tostring(valuetable[p[index].offset])))
@@ -207,6 +216,7 @@ local function printinst(p, index, valuetable)
     elseif code == ITestSet then
         printcharset(valuetable[p[index].val])
         printjmp(p, index);
+        printrulename(p, index, rulenames)
     elseif code == ISpan then
         printcharset(valuetable[p[index].val]);
     elseif code == IOpenCall then
@@ -218,6 +228,8 @@ local function printinst(p, index, valuetable)
         printjmp(p, index);
         if (code == ICall or code == IJmp) and p[index].aux > 0 then
             io.write(' ', valuetable[p[index].aux])
+        else
+            printrulename(p, index, rulenames)
         end
     end
     io.write("\n")
@@ -225,8 +237,16 @@ end
 
 
 local function printpatt(p, valuetable)
+    local ruleNames = {}
     for i = 0, p.size - 1 do
-        printinst(p.p, i, valuetable);
+        local code = p.p[i].code
+        if (code == ICall or code == IJmp) and p.p[i].aux > 0 then
+            local index = i + p.p[i].offset
+            ruleNames[index] = valuetable[p.p[i].aux]
+        end
+    end
+    for i = 0, p.size - 1 do
+        printinst(p.p, i, valuetable, ruleNames)
     end
 end
 
@@ -298,7 +318,7 @@ local function printtree(tree, ident, index, valuetable)
         io.write((" %d\n"):format(tree[index].val))
         printtree(tree, ident + 2, index + 1, valuetable);
     elseif tag == TCapture then
-        io.write((" cap: %s   n: %s\n"):format(modes[tree[index].cap], valuetable[tree[index].val]))
+        io.write((" cap: %s   n: %s\n"):format(modes[bit.band(tree[index].cap, 0xffff)], valuetable[tree[index].val]))
         printtree(tree, ident + 2, index + 1, valuetable);
     elseif tag == TRule then
         local extra = bit.band(tree[index].cap, RuleLR) == RuleLR and ' left recursive' or ''

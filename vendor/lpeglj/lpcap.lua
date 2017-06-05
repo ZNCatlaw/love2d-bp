@@ -3,7 +3,7 @@ LPEGLJ
 lpcap.lua
 Capture functions
 Copyright (C) 2014 Rostislav Sacek.
-based on LPeg v0.12 - PEG pattern matching for Lua
+based on LPeg v1.0 - PEG pattern matching for Lua
 Lua.org & PUC-Rio  written by Roberto Ierusalimschy
 http://www.inf.puc-rio.br/~roberto/lpeg/
 
@@ -28,6 +28,7 @@ http://www.inf.puc-rio.br/~roberto/lpeg/
 **
 ** [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --]]
+local ffi = require "ffi"
 
 local Cclose = 0
 local Cposition = 1
@@ -70,11 +71,13 @@ local function findopen(cs, index)
 end
 
 
-local function checknextcap(cs,  captop)
+local function checknextcap(cs, captop)
     local cap = cs.cap;
-    if cs.ocap[cap].siz == 0 then -- not a single capture?    ((cap)->siz != 0)
+    -- not a single capture?    ((cap)->siz != 0)
+    if cs.ocap[cap].siz == 0 then
         local n = 0; -- number of opens waiting a close
-        while true do -- look for corresponding close
+        -- look for corresponding close
+        while true do
             cap = cap + 1
             if cap > captop then return end
             if cs.ocap[cap].kind == Cclose then
@@ -97,9 +100,11 @@ end
 
 local function nextcap(cs)
     local cap = cs.cap;
-    if cs.ocap[cap].siz == 0 then -- not a single capture?    ((cap)->siz != 0)
+    -- not a single capture?    ((cap)->siz != 0)
+    if cs.ocap[cap].siz == 0 then
         local n = 0; -- number of opens waiting a close
-        while true do -- look for corresponding close
+        -- look for corresponding close
+        while true do
             cap = cap + 1
             if cs.ocap[cap].kind == Cclose then
                 n = n - 1
@@ -124,7 +129,8 @@ end
 local function pushnestedvalues(cs, addextra, out, valuetable)
     local co = cs.cap
     cs.cap = cs.cap + 1
-    if cs.ocap[cs.cap - 1].siz ~= 0 then -- no nested captures?
+    -- no nested captures?
+    if cs.ocap[cs.cap - 1].siz ~= 0 then
         local st = cs.ocap[co].s
         local l = cs.ocap[co].siz - 1
         out.outindex = out.outindex + 1
@@ -133,9 +139,10 @@ local function pushnestedvalues(cs, addextra, out, valuetable)
     else
         local n = 0;
         while cs.ocap[cs.cap].kind ~= Cclose do -- repeat for all nested patterns
-            n = n + pushcapture(cs, out, valuetable);
+        n = n + pushcapture(cs, out, valuetable);
         end
-        if addextra or n == 0 then -- need extra?
+        -- need extra?
+        if addextra or n == 0 then
             local st = cs.ocap[co].s
             local l = cs.ocap[cs.cap].s - cs.ocap[co].s
             out.outindex = out.outindex + 1
@@ -163,7 +170,8 @@ end
 -- the stack; goes backward from 'cap'.
 
 local function findback(cs, cap, name, valuetable)
-    while cap > 0 do -- repeat until end of list
+    -- repeat until end of list
+    while cap > 0 do
         cap = cap - 1
         local continue
         if cs.ocap[cap].kind == Cclose then
@@ -171,9 +179,10 @@ local function findback(cs, cap, name, valuetable)
         elseif cs.ocap[cap].siz == 0 then
             continue = true -- opening an enclosing capture: skip and get previous
         end
-        if not continue and cs.ocap[cap].kind == Cgroup then
+        if not continue and cs.ocap[cap].kind == Cgroup and cs.ocap[cap].idx ~= 0 then
             local gname = valuetable[cs.ocap[cap].idx] -- get group name
-            if name == gname then -- right group?
+            -- right group?
+            if name == gname then
                 return cap;
             end
         end
@@ -201,16 +210,20 @@ local function tablecap(cs, out, valuetable)
     local n = 0;
     local t = {}
     cs.cap = cs.cap + 1
-    if cs.ocap[cs.cap - 1].siz == 0 then -- table is empty
+    -- table is empty
+    if cs.ocap[cs.cap - 1].siz == 0 then
         while cs.ocap[cs.cap].kind ~= Cclose do
             local subout = { outindex = 0, out = {} }
-            if cs.ocap[cs.cap].kind == Cgroup and valuetable[cs.ocap[cs.cap].idx] ~= 0 then -- named group?
+            -- named group?
+            if cs.ocap[cs.cap].kind == Cgroup and cs.ocap[cs.cap].idx ~= 0 then
                 local groupname = valuetable[cs.ocap[cs.cap].idx] -- push group name
                 pushonenestedvalue(cs, subout, valuetable)
                 t[groupname] = subout.out[1]
-            else -- not a named group
-                local k = pushcapture(cs, subout, valuetable);
-                for i = 1, subout.outindex do -- store all values into table
+            else
+                -- not a named group
+                local k = pushcapture(cs, subout, valuetable)
+                -- store all values into table
+                for i = 1, subout.outindex do
                     t[i + n] = subout.out[i]
                 end
                 n = n + k;
@@ -230,7 +243,8 @@ local function querycap(cs, out, valuetable)
     local table = valuetable[cs.ocap[cs.cap].idx]
     local subout = { outindex = 0, out = {} }
     pushonenestedvalue(cs, subout, valuetable) -- get nested capture
-    if table[subout.out[1]] ~= nil then -- query cap. value at table
+    -- query cap. value at table
+    if table[subout.out[1]] ~= nil then
         out.outindex = out.outindex + 1
         out.out[out.outindex] = table[subout.out[1]]
         return 1
@@ -244,8 +258,10 @@ end
 local function foldcap(cs, out, valuetable)
     local fce = valuetable[cs.ocap[cs.cap].idx]
     cs.cap = cs.cap + 1
-    if cs.ocap[cs.cap - 1].siz ~= 0 or -- no nested captures?
-            cs.ocap[cs.cap].kind == Cclose then -- no nested captures (large subject)?
+    -- no nested captures?
+    -- or no nested captures (large subject)?
+    if cs.ocap[cs.cap - 1].siz ~= 0 or
+            cs.ocap[cs.cap].kind == Cclose then
         error("no initial value for fold capture", 0);
     end
     local subout = { outindex = 0; out = {} }
@@ -290,13 +306,15 @@ end
 
 local function numcap(cs, out, valuetable)
     local idx = valuetable[cs.ocap[cs.cap].idx] -- value to select
-    if idx == 0 then -- no values?
+    -- no values?
+    if idx == 0 then
         nextcap(cs); -- skip entire capture
         return 0; -- no value produced
     else
         local subout = { outindex = 0, out = {} }
         local n = pushnestedvalues(cs, false, subout, valuetable)
-        if n < idx then -- invalid index?
+        -- invalid index?
+        if n < idx then
             error(("no capture '%d'"):format(idx), 0)
         else
             out.outindex = out.outindex + 1
@@ -339,11 +357,15 @@ local function getstrcaps(cs, cps, n)
     cps[k + 1].isstring = true; -- get string value
     cps[k + 1].startstr = cs.ocap[cs.cap].s; -- starts here
     cs.cap = cs.cap + 1
-    if cs.ocap[cs.cap - 1].siz == 0 then -- nested captures?
-        while cs.ocap[cs.cap].kind ~= Cclose do -- traverse them
-            if n >= MAXSTRCAPS then -- too many captures?
+    -- nested captures?
+    if cs.ocap[cs.cap - 1].siz == 0 then
+        -- traverse them
+        while cs.ocap[cs.cap].kind ~= Cclose do
+            -- too many captures?
+            if n >= MAXSTRCAPS then
                 nextcap(cs); -- skip extra captures (will not need them)
-            elseif cs.ocap[cs.cap].kind == Csimple then -- string?
+            elseif cs.ocap[cs.cap].kind == Csimple then
+                -- string?
                 n = getstrcaps(cs, cps, n); -- put info. into array
             else
                 cps[n + 1].isstring = false; -- not a string
@@ -372,12 +394,14 @@ local function stringcap(cs, b, valuetable)
     local fmt = valuetable[cs.ocap[cs.cap].idx]
     local n = getstrcaps(cs, cps, 0) - 1; -- collect nested captures
     local i = 1
-
-    while i <= #fmt do -- traverse them
+    -- traverse them
+    while i <= #fmt do
         local c = fmt:sub(i, i)
-        if c ~= '%' then -- not an escape?
+        -- not an escape?
+        if c ~= '%' then
             b[#b + 1] = c -- add it to buffer
-        elseif fmt:sub(i + 1, i + 1) < '0' or fmt:sub(i + 1, i + 1) > '9' then -- not followed by a digit?
+        elseif fmt:sub(i + 1, i + 1) < '0' or fmt:sub(i + 1, i + 1) > '9' then
+            -- not followed by a digit?
             i = i + 1
             b[#b + 1] = fmt:sub(i, i)
         else
@@ -406,18 +430,22 @@ end
 
 local function substcap(cs, b, valuetable)
     local curr = cs.ocap[cs.cap].s;
-    if cs.ocap[cs.cap].siz ~= 0 then -- no nested captures?
+    -- no nested captures?
+    if cs.ocap[cs.cap].siz ~= 0 then
+        -- keep original text
         b[#b + 1] = cs.s and cs.s:sub(curr, cs.ocap[cs.cap].siz - 1 + curr - 1) or
-                cs.stream(curr, cs.ocap[cs.cap].siz - 1 + curr - 1) -- keep original text
+                cs.stream(curr, cs.ocap[cs.cap].siz - 1 + curr - 1)
     else
         cs.cap = cs.cap + 1 -- skip open entry
-        while cs.ocap[cs.cap].kind ~= Cclose do -- traverse nested captures
+        -- traverse nested captures
+        while cs.ocap[cs.cap].kind ~= Cclose do
             local next = cs.ocap[cs.cap].s;
             b[#b + 1] = cs.s and cs.s:sub(curr, next - curr + curr - 1) or
                     cs.stream(curr, next - curr + curr - 1) -- add text up to capture
             if addonestring(cs, b, "replacement", valuetable) then
                 curr = cs.ocap[cs.cap - 1].s + cs.ocap[cs.cap - 1].siz - 1; -- continue after match
-            else -- no capture value
+            else
+                -- no capture value
                 curr = next; -- keep original text in final result
             end
         end
@@ -472,7 +500,7 @@ function pushcapture(cs, out, valuetable)
         local arg = valuetable[cs.ocap[cs.cap].idx]
         cs.cap = cs.cap + 1
         if arg > cs.ptopcount then
-            error(("reference to absent argument #%d"):format(arg), 0)
+            error(("reference to absent extra argument #%d"):format(arg), 0)
         end
         out.outindex = out.outindex + 1
         out.out[out.outindex] = cs.ptop[arg]
@@ -501,9 +529,11 @@ function pushcapture(cs, out, valuetable)
         out.out[out.outindex] = table.concat(b)
         return 1;
     elseif type == Cgroup then
-        if valuetable[cs.ocap[cs.cap].idx] == 0 then -- anonymous group?
+        -- anonymous group?
+        if cs.ocap[cs.cap].idx == 0 then
             return pushnestedvalues(cs, false, out, valuetable); -- add all nested values
-        else -- named group: add no values
+        else
+            -- named group: add no values
             nextcap(cs); -- skip capture
             return 0
         end
@@ -536,7 +566,8 @@ local function getcaptures(capture, s, stream, r, valuetable, ...)
     local n = 0;
     local cs = { cap = 0 }
     local out = { outindex = 0; out = {} }
-    if capture[cs.cap].kind ~= Cclose then -- is there any capture?
+    -- is there any capture?
+    if capture[cs.cap].kind ~= Cclose then
         cs.ocap = capture
         cs.s = s;
         cs.stream = stream
@@ -545,24 +576,45 @@ local function getcaptures(capture, s, stream, r, valuetable, ...)
             n = n + pushcapture(cs, out, valuetable)
         until cs.ocap[cs.cap].kind == Cclose
     end
-    if n == 0 then -- no capture values?
-        return r
+    -- no capture values?
+    if n == 0 then
+        if not r then
+            return
+        else
+            return r
+        end
     end
+    assert(out.outindex < 7998, "(too many captures)")
     return unpack(out.out, 1, out.outindex)
 end
 
-local function getcapturesruntime(capture, stream, captop, valuetable, ...)
+local function getcapturesruntime(capture, s, stream, notdelete, min, max, captop, valuetable, ...)
     local n = 0;
-    local cs = { cap = 0 }
+    local cs = { cap = min }
     local out = { outindex = 0; out = {} }
     cs.ocap = capture
+    cs.s = s
     cs.stream = stream
     cs.ptopcount, cs.ptop = retcount(...)
+    local start = 0
     repeat -- collect their values
-        if not checknextcap(cs,  captop) then break end
-        n = pushcapture(cs, out, valuetable)
-    until cs.cap == captop
-    return cs.cap, out.out, out.outindex
+        if not checknextcap(cs, max) then break end
+        local notdelete = notdelete or capture[cs.cap].kind == Cgroup and capture[cs.cap].idx ~= 0 and capture[cs.cap].candelete == 0
+        pushcapture(cs, out, valuetable)
+        if notdelete then
+            start = cs.cap
+        else
+            n = n + cs.cap - start
+            for i = 0, captop - cs.cap - 1 do
+                ffi.copy(capture + start + i, capture + cs.cap + i, ffi.sizeof('CAPTURE'))
+            end
+            max = max - (cs.cap - start)
+            captop = captop - (cs.cap - start)
+            cs.cap = start
+        end
+    until cs.cap == max
+    assert(out.outindex < 7998, "(too many captures)")
+    return n, out.out, out.outindex
 end
 
 return {
