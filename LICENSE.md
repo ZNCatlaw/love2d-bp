@@ -1,6 +1,6 @@
 # LÖVE2D Boilerplate License
 
-Copyright 2014 Tim Bellefleur (except where otherwise specified)
+Copyright 2014-2017 Tim Bellefleur (except where otherwise specified)
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
