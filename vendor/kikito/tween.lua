@@ -1,5 +1,5 @@
 local tween = {
-  _VERSION     = 'tween 2.0.0',
+  _VERSION     = 'tween 2.1.1',
   _DESCRIPTION = 'tweening for lua',
   _URL         = 'https://github.com/kikito/tween.lua',
   _LICENSE     = [[
@@ -318,6 +318,7 @@ local Tween_mt = {__index = Tween}
 function Tween:set(clock)
   assert(type(clock) == 'number', "clock must be a positive number or 0")
 
+  self.initial = self.initial or copyTables({}, self.target, self.subject)
   self.clock = clock
 
   if self.clock <= 0 then
@@ -359,11 +360,8 @@ function tween.new(duration, subject, target, easing)
     subject   = subject,
     target    = target,
     easing    = easing,
-
-    initial   = copyTables({},target,subject),
     clock     = 0
   }, Tween_mt)
 end
 
 return tween
-
