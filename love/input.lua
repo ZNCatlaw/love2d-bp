@@ -18,7 +18,7 @@ end
 
 -- Maybe we want to use keypressed as well for a few global
 --
-function love.keypressed(key)
+function love.keypressed(key, scancode, isrepeat)
     if(key == 'f10') then
         love.event.quit()
     elseif(key == 'f11') then

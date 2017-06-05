@@ -13,6 +13,7 @@ Set    = require('vendor/nomoon/set')
 JSON   = require('vendor/dkjson')
 SLAXML = require('vendor/slaxml/slaxdom')
 Sfxr   = require('vendor/sfxr')
+LPegLJ = require('vendor/lpeglj/lpeglj')
 
 -- Kikito's best libraries
 kikito = {
@@ -27,6 +28,7 @@ kikito = {
 
 -- Parts of the HUMP library
 hump = {
+    Camera = require('vendor/hump/camera'),
     GS     = require('vendor/hump/gamestate'),
     Signal = require('vendor/hump/signal'),
     Timer  = require('vendor/hump/timer'),

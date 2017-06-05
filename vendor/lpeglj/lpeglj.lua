@@ -32,9 +32,9 @@ http://www.inf.puc-rio.br/~roberto/lpeg/
 assert(jit.version_num > 20000, "Use LuaJIT v2.0.1 or higher.")
 
 local ffi = require "ffi"
-local lpcode = require "lpcode"
-local lpprint = require "lpprint"
-local lpvm = require "lpvm"
+local lpcode = require "vendor/lpeglj/lpcode"
+local lpprint = require "vendor/lpeglj/lpprint"
+local lpvm = require "vendor/lpeglj/lpvm"
 
 local band, bor, bnot, rshift, lshift = bit.band, bit.bor, bit.bnot, bit.rshift, bit.lshift
 

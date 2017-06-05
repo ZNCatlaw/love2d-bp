@@ -30,7 +30,7 @@ http://www.inf.puc-rio.br/~roberto/lpeg/
 --]]
 
 local ffi = require "ffi"
-local lpcap = require "lpcap"
+local lpcap = require "vendor/lpeglj/lpcap"
 --[[ Only for debug purpose
 local lpprint = require"lpprint"
 --]]

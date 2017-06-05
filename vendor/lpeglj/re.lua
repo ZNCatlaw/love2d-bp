@@ -4,7 +4,7 @@
 -- imported functions and modules
 local tonumber, print, error = tonumber, print, error
 local setmetatable = setmetatable
-local m = require"lpeglj"
+local m = require"vendor/lpeglj/lpeglj"
 
 -- 'm' will be used to parse expressions, and 'mm' will be used to
 -- create expressions; that is, 're' runs on 'm', creating patterns

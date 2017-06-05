@@ -29,7 +29,7 @@ http://www.inf.puc-rio.br/~roberto/lpeg/
 ** [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --]]
 local ffi = require "ffi"
-require "lpvm"
+require "vendor/lpeglj/lpvm"
 
 local band, bor, bnot, rshift, lshift = bit.band, bit.bor, bit.bnot, bit.rshift, bit.lshift
 
