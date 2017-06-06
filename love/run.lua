@@ -58,9 +58,7 @@ function love.run()
             love.graphics.origin()
 
             -- draw.lua : love.draw()
-            love.viewport.pushScale()
             local debugInfo = love.draw()
-            love.viewport.popScale()
 
             -- Print optional debug information
             if(debugInfo) then

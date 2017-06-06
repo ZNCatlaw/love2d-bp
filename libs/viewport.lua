@@ -1,3 +1,7 @@
+--
+-- FIXME: This isn't working very well right now so I've replaced it with Push
+--
+
 local Viewport = Class.new('Viewport')
 
 local roundDownToNearest = function(val, multiple)
@@ -11,7 +15,7 @@ function Viewport:initialize(opts)
     opts = Class.defaults({
         width  = 720,
         height = 405,
-        scale  = 0,
+        scale  = 1,
         multiple = 1,
         filter = {'nearest', 'nearest', 0},
         fs     = false
@@ -29,66 +33,41 @@ end
 function Viewport:setupScreen()
     self:setScale(self.scale)
     love.graphics.setDefaultFilter(unpack(self:getFilter()))
+    love.debug.print(self:getParams())
     if(self:setFullscreen(self.fs)) then
-        love.window.setMode(0, 0, {fullscreen = true, fullscreentype = "desktop"})
+        love.window.setMode(self.width * self.r_scale,
+                            self.height * self.r_scale,
+                            {highdpi=true, fullscreen = true, fullscreentype = "desktop"})
     else
         love.window.setMode(self.width * self.r_scale,
                             self.height * self.r_scale,
-                            {resizable = true})
+                            {highdpi = true, resizable = true})
     end
-    self.r_width  = self.width * self.r_scale
-    self.r_height = self.height * self.r_scale
-    self.draw_ox  = (love.graphics.getWidth() -  (self.r_width)) / 2
+    self.r_width  = love.window.toPixels(self.width) * self.r_scale
+    self.r_height = love.window.toPixels(self.height) * self.r_scale
+    self.draw_ox  = (love.graphics.getWidth() - (self.r_width)) / 2
     self.draw_oy  = (love.graphics.getHeight() - (self.r_height)) / 2
 end
 
 function Viewport:setScale(scale)
+    local max_scale = self:maxScale()
     local scale = roundDownToNearest(scale, self.multiple)
-    self.scale = scale
-
-    local screen_w, screen_h = love.window.getDesktopDimensions()
-    if (not self.fs) then
-        -- subtract some height so that windowed mode doesn't scale
-        -- beyond titlebar + application bar height in windows
-        screen_w = screen_w - 64
-        screen_h = screen_h - 96
-    end
-
-    local max_scale = math.min(roundDownToNearest(screen_w / self.width, self.multiple),
-                               roundDownToNearest(screen_h / self.height, self.multiple))
+    self.scale = math.max(1, scale)
 
     if (self.fs or (scale or 0) <= 0 or (scale or 0) > max_scale) then
         self.r_scale = max_scale
     else
-        self.r_scale = scale
+        self.r_scale = math.min(scale, max_scale)
     end
-
     return self.r_scale
 end
 
 function Viewport:fixSize(w, h)
-    local screen_w, screen_h = love.window.getDesktopDimensions()
-    if (not self.fs) then
-        -- subtract some height so that windowed mode doesn't scale
-        -- beyond titlebar + application bar height in windows
-        screen_w = screen_w - 64
-        screen_h = screen_h - 96
-    end
+    local p_width, p_height = love.window.toPixels(self.width, self.height)
 
-    local cur_scale = math.max(roundDownToNearest(w / self.width, self.multiple),
-                               roundDownToNearest(h / self.height, self.multiple))
-
-    local max_scale = math.min(roundDownToNearest(screen_w / self.width, self.multiple),
-                               roundDownToNearest(screen_h / self.height, self.multiple))
-
-    if (cur_scale < 1) then
-        self.scale = 1
-    elseif(cur_scale > max_scale) then
-        self.scale = max_scale
-    else
-        self.scale = cur_scale
-    end
-
+    local cur_scale = math.max(roundDownToNearest(w / p_width, self.multiple),
+                               roundDownToNearest(h / p_height, self.multiple))
+    self.scale = math.max(1, cur_scale)
     self:setupScreen()
 end
 
@@ -98,7 +77,8 @@ end
 
 function Viewport:setWidth(width)
     local screen_w, screen_h = love.window.getDesktopDimensions()
-    self.width = math.floor(math.min(width, screen_w))
+    local p_width = love.window.toPixels(width)
+    self.width = love.window.fromPixels(math.floor(math.min(p_width, screen_w)))
     return self.width
 end
 
@@ -108,7 +88,8 @@ end
 
 function Viewport:setHeight(height)
     local screen_w, screen_h = love.window.getDesktopDimensions()
-    self.height = math.floor(math.min(height, screen_h))
+    local p_height = love.window.toPixels(height)
+    self.height = love.window.fromPixels(math.floor(math.min(p_height, screen_h)))
     return self.height
 end
 
@@ -117,7 +98,7 @@ function Viewport:getScaleMultiple()
 end
 
 function Viewport:setScaleMultiple(multiple)
-    self.multiple = multiple
+    self.multiple = multiple / love.window.getPixelScale()
     return self.multiple
 end
 
@@ -163,41 +144,57 @@ function Viewport:setFullscreen(mode)
 end
 
 function Viewport:left(x)
-    return x
+    return love.window.toPixels(x)
 end
 
 function Viewport:top(y)
-    return y
+    return love.window.toPixels(y)
 end
 
 function Viewport:lefttop(x, y)
-    return x, y
+    return love.window.toPixels(x, y)
 end
 
 function Viewport:right(x, w)
     w = tonumber(w) or 0
-    return self.width - x - w
+    return love.window.toPixels(self.width - x - w)
 end
 
 function Viewport:righttop(x, y, w, h)
     w = tonumber(w) or 0
-    return self.width - x - w, y
+    return love.window.toPixels(self.width - x - w, y)
 end
 
 function Viewport:bottom(y, h)
     h = tonumber(h) or 0
-    return self.height - y - h
+    return love.window.toPixels(self.height - y - h)
 end
 
 function Viewport:leftbottom(x, y, w, h)
     h = tonumber(h) or 0
-    return x, self.height - y - h
+    return love.window.toPixels(x, self.height - y - h)
 end
 
 function Viewport:rightbottom(x, y, w, h)
     w = tonumber(w) or 0
     h = tonumber(h) or 0
-    return self.width - x - w, self.height - y - h
+    return love.window.toPixels(self.width - x - w, self.height - y - h)
+end
+
+function Viewport:maxScale()
+    local screen_w, screen_h = love.window.toPixels(love.window.getDesktopDimensions())
+    if (not self.fs) then
+        -- subtract some height so that windowed mode doesn't scale
+        -- beyond titlebar + application bar height in windows
+        screen_w = screen_w - 80
+        screen_h = screen_h - 80
+    end
+
+    local p_width, p_height = love.window.toPixels(self.width, self.height)
+    local max_scale = math.min(roundDownToNearest(screen_w / p_width, self.multiple),
+                               roundDownToNearest(screen_h / p_height, self.multiple))
+
+    return math.max(1, max_scale)
 end
 
 function Viewport:pushScale()
