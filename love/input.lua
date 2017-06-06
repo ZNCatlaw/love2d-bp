@@ -22,8 +22,7 @@ function love.keypressed(key, scancode, isrepeat)
     if(key == 'f10') then
         love.event.quit()
     elseif(key == 'f11') then
-        love.viewport.setFullscreen()
-        love.viewport.setupScreen()
+        love.viewport:switchFullscreen()
     elseif(key == 'f12') then
         love.inputman.threadStatus()
         love.soundman.threadStatus()
