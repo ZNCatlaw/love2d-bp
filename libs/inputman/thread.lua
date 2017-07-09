@@ -1,6 +1,7 @@
 -- Threads have a new environment, so globals/modules need to be loaded
 require('love.timer')
 require('love.joystick')
+require('love.mouse')
 require('love.keyboard')
 require('love.filesystem')
 

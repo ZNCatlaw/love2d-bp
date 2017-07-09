@@ -131,6 +131,8 @@ function InputMapper:isState(state)
 
         if (device == 'k') then
             if love.keyboard.isDown(key) then result = true end
+        elseif (device == 'm') then
+            if love.mouse.isDown(key) then result = true end
         elseif (device == 'j' and joy) then
             if (dir) then
                 local axis = joy:getGamepadAxis(key)
